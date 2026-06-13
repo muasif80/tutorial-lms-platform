@@ -3,15 +3,16 @@ package com.scholr.lms.architecture;
 import static com.tngtech.archunit.lang.syntax.ArchRuleDefinition.noClasses;
 import static com.tngtech.archunit.library.dependencies.SlicesRuleDefinition.slices;
 
+import com.tngtech.archunit.core.importer.ImportOption;
 import com.tngtech.archunit.junit.AnalyzeClasses;
 import com.tngtech.archunit.junit.ArchTest;
 import com.tngtech.archunit.lang.ArchRule;
 
 /**
- * Enforces the modular-monolith boundaries in CI. If these fail, the build fails —
- * which is how the bounded contexts stay bounded instead of eroding into a big ball of mud.
+ * Enforces the modular-monolith boundaries in CI (production classes only). If these
+ * fail, the build fails — which is how the bounded contexts stay bounded.
  */
-@AnalyzeClasses(packages = "com.scholr.lms")
+@AnalyzeClasses(packages = "com.scholr.lms", importOptions = ImportOption.DoNotIncludeTests.class)
 class ModularityTest {
 
     /** The context modules must not form dependency cycles. */

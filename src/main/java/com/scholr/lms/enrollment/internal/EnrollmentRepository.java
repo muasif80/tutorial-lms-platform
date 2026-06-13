@@ -1,13 +1,13 @@
 package com.scholr.lms.enrollment.internal;
 
+import java.util.Optional;
+import java.util.UUID;
+
 import com.scholr.lms.enrollment.domain.Enrollment;
+import org.springframework.data.jpa.repository.JpaRepository;
 
-/**
- * Module-private persistence detail. Nothing outside the enrollment module may
- * depend on this package — a rule enforced by ModularityTest (ArchUnit). A real
- * implementation backed by PostgreSQL arrives in Part 2.
- */
-public interface EnrollmentRepository {
+public interface EnrollmentRepository extends JpaRepository<Enrollment, UUID> {
 
-    void save(Enrollment enrollment);
+    /** Tenant-scoped automatically by Hibernate @TenantId — backs idempotent enroll. */
+    Optional<Enrollment> findByCohortIdAndLearnerId(UUID cohortId, UUID learnerId);
 }

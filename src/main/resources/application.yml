@@ -1,0 +1,15 @@
+# Production config (PostgreSQL). Flyway owns the schema; Hibernate only validates.
+spring:
+  datasource:
+    url: ${DB_URL:jdbc:postgresql://localhost:5432/scholr}
+    username: ${DB_USER:scholr}
+    password: ${DB_PASSWORD:scholr}
+  jpa:
+    hibernate:
+      ddl-auto: validate
+    open-in-view: false
+    properties:
+      hibernate:
+        format_sql: true
+  flyway:
+    enabled: true

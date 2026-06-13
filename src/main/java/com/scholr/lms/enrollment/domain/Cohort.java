@@ -1,51 +1,85 @@
 package com.scholr.lms.enrollment.domain;
 
-import com.scholr.lms.catalog.domain.CourseId;
-import com.scholr.lms.shared.TenantId;
+import java.util.UUID;
+
+import jakarta.persistence.Column;
+import jakarta.persistence.Entity;
+import jakarta.persistence.Id;
+import jakarta.persistence.Table;
+import jakarta.persistence.Version;
+import org.hibernate.annotations.TenantId;
 
 /**
- * The Cohort aggregate root. It protects the seat invariant — a cohort may never
- * be oversold beyond its capacity. Because the cohort and its seat count live in
- * one aggregate (and, from Part 2, one database transaction), enrollment is atomic:
- * no distributed lock, no race between two callers both believing the last seat is free.
+ * The Cohort aggregate root — now a persistent entity (Part 1 made it a pure
+ * aggregate; Part 2 makes it durable). It still protects the seat invariant:
+ * a cohort may never be oversold beyond its capacity.
+ *
+ * <p>Two things keep that invariant true even under concurrency: the in-aggregate
+ * check in {@link #enroll}, and the {@code @Version} optimistic lock — if two
+ * requests both read the last seat as free and try to save, one wins and the other
+ * is rejected with an optimistic-lock failure (to retry), so the seat is never
+ * double-sold. No distributed lock required, because the cohort and its seat count
+ * live in one aggregate and one database transaction.
  */
+@Entity
+@Table(name = "cohorts")
 public class Cohort {
 
-    private final CohortId id;
-    private final TenantId tenant;
-    private final CourseId course;
-    private final int capacity;
+    @Id
+    private UUID id;
+
+    @TenantId
+    @Column(name = "tenant_id", nullable = false, updatable = false)
+    private UUID tenantId;
+
+    @Column(name = "course_id", nullable = false)
+    private UUID courseId;
+
+    @Column(nullable = false)
+    private int capacity;
+
+    @Column(name = "enrolled_count", nullable = false)
     private int enrolledCount;
 
-    public Cohort(CohortId id, TenantId tenant, CourseId course, int capacity) {
+    @Version
+    private long version;
+
+    protected Cohort() {
+    }
+
+    public Cohort(UUID id, UUID courseId, int capacity) {
         if (capacity < 1) {
             throw new IllegalArgumentException("capacity must be >= 1");
         }
         this.id = id;
-        this.tenant = tenant;
-        this.course = course;
+        this.courseId = courseId;
         this.capacity = capacity;
+        this.enrolledCount = 0;
+    }
+
+    public static Cohort create(UUID courseId, int capacity) {
+        return new Cohort(UUID.randomUUID(), courseId, capacity);
     }
 
     /** Enroll a learner, enforcing the seat invariant inside this aggregate. */
-    public Enrollment enroll(LearnerId learner) {
+    public Enrollment enroll(UUID learnerId) {
         if (enrolledCount >= capacity) {
             throw new CohortFullException(id);
         }
         enrolledCount++;
-        return new Enrollment(id, learner);
+        return new Enrollment(UUID.randomUUID(), id, learnerId);
     }
 
-    public CohortId id() {
+    public UUID id() {
         return id;
     }
 
-    public TenantId tenant() {
-        return tenant;
+    public UUID tenantId() {
+        return tenantId;
     }
 
-    public CourseId course() {
-        return course;
+    public UUID courseId() {
+        return courseId;
     }
 
     public int capacity() {
