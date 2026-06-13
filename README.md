@@ -13,7 +13,8 @@ demands it. (Stack rationale and the full design are in Part 1.)
 | Part | Article |
 |------|---------|
 | 1 — Product, Domain & Architecture | https://skillsuites.com/lms-architecture-product-domain-design/ |
-| 2–10 | published one per day |
+| 2 — Data Model, Multi-Tenancy & APIs | https://skillsuites.com/lms-backend-data-model-multi-tenancy/ |
+| 3–10 | published one per day |
 
 ## Branches
 
@@ -22,20 +23,28 @@ demands it. (Stack rationale and the full design are in Part 1.)
 | Branch | State |
 |--------|-------|
 | `part-1` | Product & domain: the module structure + the domain model in code |
-| `part-2` … `part-10` | Added as each article ships |
+| `part-2` | Persistence: multi-tenant data model, `@TenantId` + RLS, idempotent enrollment, REST API |
+| `part-3` … `part-10` | Added as each article ships |
 
-## What's in `part-1`
+## What's in `part-2`
 
-This part is design-first, so the code establishes the **skeleton**, not yet the database:
+Part 2 turns the design into a **persistent, multi-tenant backend**:
 
-- The **bounded contexts as enforced modules** (`identity`, `catalog`, `enrollment`, `learning`, `assessment`, `shared`).
-- The **domain model** for the Enrollment context, including the `Cohort` aggregate that **protects the
-  seat invariant** ("never oversell a cohort") — the canonical example from the article.
-- An **ArchUnit test** that fails the build if a module reaches into another module's `internal` package,
-  and a slices rule that keeps the modules free of cycles.
-- A health/contexts endpoint, an ADR, and the architecture notes.
+- **Pool multi-tenancy** — a shared schema with a `tenant_id` on every tenant-scoped table, with isolation
+  enforced in two independent layers: Hibernate `@TenantId` (the app can't forget the filter) **and**
+  PostgreSQL **Row-Level Security** (the database refuses to leak). See `shared/MultiTenancyConfig.java`
+  and `db/migration/V1__init.sql`.
+- The **core data model** as JPA entities — identity is global (`app_users`), membership and roles are
+  per-tenant (`memberships`), and `courses` / `cohorts` / `enrollments` are tenant-scoped.
+- The **transactional, idempotent seat invariant** — the `Cohort` aggregate gains a `@Version` optimistic
+  lock, and `EnrollmentService.enroll(...)` is find-or-create so a retried request never double-enrolls
+  or oversells (`enrollment/`).
+- A small **REST API** (`web/`) over the three contexts, with the tenant carried per request.
+- An integration test (`MultiTenancyAndEnrollmentTest`) that **proves** tenant isolation, idempotency, and
+  the seat cap on a real persistence stack — alongside the Part 1 ArchUnit boundary checks.
 
-> Persistence (PostgreSQL, multi-tenancy, RLS) arrives in **Part 2**.
+> Tests run on in-memory H2 (PostgreSQL mode); the RLS policy itself is Postgres-only and ships in the
+> Flyway migration for real deployments. `mvn verify` runs the whole proof.
 
 ## Build & run
 
