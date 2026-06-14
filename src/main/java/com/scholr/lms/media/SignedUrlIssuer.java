@@ -8,6 +8,7 @@ import java.util.Base64;
 import javax.crypto.Mac;
 import javax.crypto.spec.SecretKeySpec;
 
+import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Component;
 
@@ -36,6 +37,11 @@ public class SignedUrlIssuer {
     private final Duration ttl;
     private final Clock clock;
 
+    /**
+     * The bean constructor Spring uses. Marked {@code @Autowired} so the container picks it
+     * unambiguously over the test/seam constructor below (two constructors are otherwise a tie).
+     */
+    @Autowired
     public SignedUrlIssuer(
             @Value("${media.cdn.base-url:https://cdn.scholr.example}") String cdnBaseUrl,
             @Value("${media.cdn.signing-key:scholr-dev-signing-key-change-me}") String signingKey,
