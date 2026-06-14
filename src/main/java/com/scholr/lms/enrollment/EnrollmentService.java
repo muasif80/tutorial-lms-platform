@@ -6,6 +6,7 @@ import com.scholr.lms.enrollment.domain.Cohort;
 import com.scholr.lms.enrollment.domain.Enrollment;
 import com.scholr.lms.enrollment.internal.CohortRepository;
 import com.scholr.lms.enrollment.internal.EnrollmentRepository;
+import com.scholr.lms.events.OutboxWriter;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -15,10 +16,12 @@ public class EnrollmentService {
 
     private final CohortRepository cohorts;
     private final EnrollmentRepository enrollments;
+    private final OutboxWriter outbox;
 
-    public EnrollmentService(CohortRepository cohorts, EnrollmentRepository enrollments) {
+    public EnrollmentService(CohortRepository cohorts, EnrollmentRepository enrollments, OutboxWriter outbox) {
         this.cohorts = cohorts;
         this.enrollments = enrollments;
+        this.outbox = outbox;
     }
 
     public Cohort createCohort(UUID courseId, int capacity) {
@@ -30,6 +33,12 @@ public class EnrollmentService {
      * enrollment instead of creating a duplicate; a new one loads the cohort, enforces
      * the seat invariant, and persists both the enrollment and the bumped seat count in
      * one transaction (with the cohort's @Version guarding against concurrent oversell).
+     *
+     * <p>Part 5: on a <em>new</em> enrollment we also write an {@code enrollment.created} event to
+     * the transactional outbox, in this same transaction. The enrollment row, the seat bump, and the
+     * event therefore commit together or not at all — closing the dual-write gap so the analytics
+     * pipeline downstream can never disagree with the system of record. The event is not written on
+     * the idempotent retry path, so a duplicated request never emits a duplicate event either.
      */
     @Transactional
     public Enrollment enroll(UUID cohortId, UUID learnerId) {
@@ -39,7 +48,9 @@ public class EnrollmentService {
                     .orElseThrow(() -> new IllegalArgumentException("cohort not found: " + cohortId));
                 Enrollment enrollment = cohort.enroll(learnerId);
                 cohorts.save(cohort);
-                return enrollments.save(enrollment);
+                Enrollment saved = enrollments.save(enrollment);
+                outbox.append("enrollment.created", saved.id(), learnerId + ":" + cohort.courseId());
+                return saved;
             });
     }
 }

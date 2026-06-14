@@ -17,6 +17,6 @@ public class SystemController {
 
     @GetMapping("/contexts")
     public List<String> contexts() {
-        return List.of("identity", "catalog", "enrollment", "media", "learning", "assessment", "realtime");
+        return List.of("identity", "catalog", "enrollment", "media", "learning", "assessment", "realtime", "events");
     }
 }
