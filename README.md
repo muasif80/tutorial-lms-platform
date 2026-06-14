@@ -17,7 +17,8 @@ demands it. (Stack rationale and the full design are in Part 1.)
 | 3 — Serving Course Video at Scale: Storage, Transcoding & CDN | https://skillsuites.com/lms-video-content-delivery-cdn/ |
 | 4 — Assessments & Real-Time: Auto-Grading, Live Classes & WebSockets | https://skillsuites.com/lms-assessments-realtime-engine/ |
 | 5 — Learning Analytics: Events, Streaming & the Transactional Outbox | https://skillsuites.com/lms-events-analytics-pipeline/ |
-| 6–10 | published one per day |
+| 6 — Search, Recommendations & AI Tutoring: Hybrid Search, Cold-Start & RAG | https://skillsuites.com/lms-search-recommendations-personalization/ |
+| 7–10 | published one per day |
 
 ## Branches
 
@@ -30,7 +31,8 @@ demands it. (Stack rationale and the full design are in Part 1.)
 | `part-3` | Media: video assets, an idempotent transcoding pipeline (off the request path), an HLS/ABR ladder, and signed CDN playback URLs |
 | `part-4` | Assessment: deterministic auto-grading, exactly-once submission, attempts policy + timed expiry; plus a real-time fan-out tier (broker seam, presence, missed-message replay) |
 | `part-5` | Events: transactional outbox (atomic event-with-state), at-least-once relay, idempotent progress-projection consumer, tenant-isolated; enroll emits `enrollment.created` |
-| `part-6` … `part-10` | Added as each article ships |
+| `part-6` | Discovery: keyword/semantic/hybrid catalog search, content-based + cold-start recommendations, zero-downtime alias-swap reindex, hand-rolled tenant isolation in the search store |
+| `part-7` … `part-10` | Added as each article ships |
 
 ## What's in `part-2`
 
@@ -124,6 +126,26 @@ Part 5 adds the **Events** context — the reliable backbone every analytics fea
   progress tables, so the whole pipeline is tenant-isolated.
 - **The proof** — `EventsPipelineTest` asserts the atomic outbox write, the at-least-once relay, an
   idempotent consumer that won't double-count a redelivered event, and correct progress from the stream.
+
+## What's in `part-6`
+
+Part 6 adds the **Discovery** context — search, recommendations, and the AI-tutor retrieval layer —
+built as a search-store seam (OpenSearch in production), not Postgres.
+
+- **Keyword / semantic / hybrid search** (`discovery/SearchService.java` + `SearchMode.java`) — lexical
+  term matching, cosine similarity over embeddings, and a reranked blend of both, times domain ranking
+  signals (popularity, completion rate).
+- **The embedding seam** (`discovery/TextVectorizer.java`) — a deterministic stand-in; a real embedding
+  model plugs into this one component, exactly like the broker/publisher seams in Parts 4–5.
+- **The search-index port + zero-downtime reindex** (`discovery/SearchIndex.java`,
+  `InMemorySearchIndex.java`, `IndexingService.java`) — searches hit a stable alias; a full reindex
+  builds a new physical index and atomically repoints the alias, so readers never see a half-built index.
+- **Recommendations + cold-start** (`discovery/RecommendationService.java`) — content-based "more like
+  this" (works from day one) with a popularity fallback for learners with no history.
+- **Hand-rolled tenant isolation** — the search store has no Row-Level Security, so every document carries
+  its `tenantId` and every query filters on the current tenant. Leaving Postgres means re-earning isolation.
+- **The proof** — `DiscoverySearchTest` asserts the three search modes, recommendations + cold-start,
+  tenant isolation, and the zero-downtime alias swap.
 
 ## Build & run
 
