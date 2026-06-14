@@ -20,7 +20,8 @@ demands it. (Stack rationale and the full design are in Part 1.)
 | 6 — Search, Recommendations & AI Tutoring: Hybrid Search, Cold-Start & RAG | https://skillsuites.com/lms-search-recommendations-personalization/ |
 | 7 — Payments, Billing & Subscriptions: Idempotent Webhooks & Entitlements | https://skillsuites.com/lms-payments-billing-subscriptions/ |
 | 8 — Interoperability: LTI 1.3, SCORM & xAPI | https://skillsuites.com/lms-interoperability-lti-scorm-xapi/ |
-| 9–10 | published one per day |
+| 9 — The Experience Layer: Frontend, Accessibility (WCAG 2.2), i18n & Offline | https://skillsuites.com/lms-frontend-accessibility-i18n/ |
+| 10 | the productionization capstone |
 
 ## Branches
 
@@ -36,7 +37,8 @@ demands it. (Stack rationale and the full design are in Part 1.)
 | `part-6` | Discovery: keyword/semantic/hybrid catalog search, content-based + cold-start recommendations, zero-downtime alias-swap reindex, hand-rolled tenant isolation in the search store |
 | `part-7` | Billing: subscription state machine, separate entitlements, idempotent webhook processing (dedup by PSP event id), Stripe-agnostic gateway port, reconciliation; V5 migration with RLS |
 | `part-8` | Interop: xAPI translation to an LRS (fed by Part 5 events), LTI 1.3 launch validation + AGS grade passback, XXE-hardened SCORM manifest parsing, reliable idempotent SCORM completion capture |
-| `part-9` … `part-10` | Added as each article ships |
+| `part-9` | Sync: offline-first conflict resolution — grow-only-set union for completed lessons + last-write-wins position cursor, idempotent multi-device merge |
+| `part-10` | the productionization capstone |
 
 ## What's in `part-2`
 
@@ -191,6 +193,27 @@ institutions, built as bridging seams (no JPA of its own).
   war-story fix: a stable derived statement id means a doubled runtime commit is captured exactly once.
 - **The proof** — `InteropTest` asserts launch validation, tampered/expired rejection, grade passback,
   XXE rejection, and idempotent completion capture.
+
+## What's in `part-9`
+
+Part 9 adds the **Sync** context — the server side of offline-first learning, where the experience
+layer's hardest distributed problem (offline state + conflict resolution) is solved.
+
+- **Conflict-free merge** (`sync/domain/CourseSyncState.java`) — completed lessons are a grow-only set
+  (G-Set CRDT) merged by union, which is commutative, associative, and idempotent, so two devices that
+  each made different progress offline both win and re-syncing a batch changes nothing; the single
+  position cursor is a last-write-wins register resolved by timestamp.
+- **An idempotent sync endpoint** (`sync/SyncService.java` + `web/SyncController.java`) — a client can
+  safely retry a sync it isn't sure landed, the same discipline that protected enrollment, submission,
+  events, and payments, now applied to a flaky mobile connection.
+- **`V6__sync.sql`** — `tenant_id` + index + Row-Level Security, so a cross-tenant read of another
+  learner's offline progress is structurally impossible.
+- **The proof** — `OfflineSyncTest` asserts multi-device set union, last-write-wins ordering (out-of-order
+  arrival still picks the latest), idempotent re-sync, and tenant isolation.
+
+> The rest of Part 9 (frontend architecture, the design system, WCAG 2.2 AA accessibility, i18n/RTL,
+> Core Web Vitals, and the PWA) is front-end and covered in the article; the offline-sync engine is the
+> part that lives in this backend.
 
 ## Build & run
 
