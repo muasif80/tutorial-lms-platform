@@ -63,7 +63,7 @@ public class Question {
      */
     @ElementCollection
     @CollectionTable(name = "question_answer_key", joinColumns = @JoinColumn(name = "question_id"))
-    @Column(name = "value")
+    @Column(name = "answer_value")
     private Set<String> answerKey;
 
     protected Question() {

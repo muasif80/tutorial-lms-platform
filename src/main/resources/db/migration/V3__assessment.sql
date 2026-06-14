@@ -30,8 +30,8 @@ create table question_options (
 );
 
 create table question_answer_key (
-    question_id uuid not null references questions (id),
-    value       varchar(1024) not null
+    question_id  uuid not null references questions (id),
+    answer_value varchar(1024) not null
 );
 
 create table attempts (
