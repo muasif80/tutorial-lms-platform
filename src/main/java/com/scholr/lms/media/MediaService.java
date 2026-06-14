@@ -61,6 +61,16 @@ public class MediaService {
     }
 
     /**
+     * The current tenant's video assets for a course — a tenant-scoped query (Hibernate
+     * {@code @TenantId} adds the filter automatically). A different tenant asking for the
+     * same course id gets an empty list, never another tenant's videos.
+     */
+    @Transactional(readOnly = true)
+    public List<VideoAsset> assetsForCourse(UUID courseId) {
+        return assets.findByCourseId(courseId);
+    }
+
+    /**
      * Enqueue transcoding for an asset — <em>off the request path</em> and idempotent.
      *
      * <p>This method only writes a job row and flips the asset to {@code TRANSCODING}; it does
@@ -84,9 +94,9 @@ public class MediaService {
     /**
      * Record the renditions a completed transcode produced and mark the asset streamable.
      * This is what a worker calls after FFmpeg/the transcoder finishes. It is idempotent at
-     * the database level — a {@code (asset_id, height)} unique constraint means a transcoder
-     * that delivers "done" twice (at-least-once delivery is the norm) cannot create duplicate
-     * rungs, and {@code markReady()} is itself idempotent.
+     * the database level — a {@code (tenant_id, asset_id, height)} unique constraint means a
+     * transcoder that delivers "done" twice (at-least-once delivery is the norm) cannot create
+     * duplicate rungs, and {@code markReady()} is itself idempotent.
      */
     @Transactional
     public VideoAsset completeTranscode(UUID assetId, UUID jobId) {

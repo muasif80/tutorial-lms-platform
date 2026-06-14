@@ -9,6 +9,8 @@ import java.time.Clock;
 import java.time.Duration;
 import java.time.Instant;
 import java.time.ZoneOffset;
+import java.util.List;
+import java.util.UUID;
 
 import com.scholr.lms.catalog.CatalogService;
 import com.scholr.lms.catalog.domain.Course;
@@ -55,19 +57,24 @@ class MediaTest {
         Organization acme = identity.createOrganization("Acme");
         Organization globex = identity.createOrganization("Globex");
 
-        TenantContext.set(TenantId.of(acme.id()));
-        Course acmeCourse = catalog.createCourse("Acme Course");
-        VideoAsset acmeAsset = media.registerUpload(acmeCourse.id(), "uploads/acme/intro.mp4");
+        // Both tenants register a video against the *same* course id; the tenant_id is what
+        // keeps them apart. A tenant-scoped query must return only the caller's own asset.
+        UUID sharedCourseId = UUID.randomUUID();
 
-        // Globex must not be able to load Acme's asset (cross-tenant read is blocked).
+        TenantContext.set(TenantId.of(acme.id()));
+        VideoAsset acmeAsset = media.registerUpload(sharedCourseId, "uploads/acme/intro.mp4");
+
         TenantContext.set(TenantId.of(globex.id()));
-        assertThrows(IllegalArgumentException.class,
-            () -> media.enqueueTranscode(acmeAsset.id(), "globex-key"),
-            "Globex must not reach Acme's asset");
+        assertTrue(media.assetsForCourse(sharedCourseId).isEmpty(),
+            "Globex must not see Acme's video");
+        media.registerUpload(sharedCourseId, "uploads/globex/intro.mp4");
+        List<VideoAsset> globexAssets = media.assetsForCourse(sharedCourseId);
+        assertEquals(1, globexAssets.size(), "Globex sees only its own video");
 
-        // Acme still sees its own asset fine.
         TenantContext.set(TenantId.of(acme.id()));
-        assertEquals(AssetStatus.UPLOADED, acmeAsset.status());
+        List<VideoAsset> acmeAssets = media.assetsForCourse(sharedCourseId);
+        assertEquals(1, acmeAssets.size(), "Acme sees only its own video");
+        assertEquals(acmeAsset.id(), acmeAssets.get(0).id());
     }
 
     @Test
