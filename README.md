@@ -21,7 +21,7 @@ demands it. (Stack rationale and the full design are in Part 1.)
 | 7 — Payments, Billing & Subscriptions: Idempotent Webhooks & Entitlements | https://skillsuites.com/lms-payments-billing-subscriptions/ |
 | 8 — Interoperability: LTI 1.3, SCORM & xAPI | https://skillsuites.com/lms-interoperability-lti-scorm-xapi/ |
 | 9 — The Experience Layer: Frontend, Accessibility (WCAG 2.2), i18n & Offline | https://skillsuites.com/lms-frontend-accessibility-i18n/ |
-| 10 | the productionization capstone |
+| 10 — Productionizing: Security, Testing, CI/CD, Scaling, SRE & Cost (Capstone) | https://skillsuites.com/lms-production-security-testing-sre/ |
 
 ## Branches
 
@@ -38,7 +38,7 @@ demands it. (Stack rationale and the full design are in Part 1.)
 | `part-7` | Billing: subscription state machine, separate entitlements, idempotent webhook processing (dedup by PSP event id), Stripe-agnostic gateway port, reconciliation; V5 migration with RLS |
 | `part-8` | Interop: xAPI translation to an LRS (fed by Part 5 events), LTI 1.3 launch validation + AGS grade passback, XXE-hardened SCORM manifest parsing, reliable idempotent SCORM completion capture |
 | `part-9` | Sync: offline-first conflict resolution — grow-only-set union for completed lessons + last-write-wins position cursor, idempotent multi-device merge |
-| `part-10` | the productionization capstone |
+| `part-10` | Production: Actuator health/liveness/readiness probes, a committed docker-compose deploy, a hardened non-root container, and a live demo console — the system, deployable |
 
 ## What's in `part-2`
 
@@ -214,6 +214,37 @@ layer's hardest distributed problem (offline state + conflict resolution) is sol
 > The rest of Part 9 (frontend architecture, the design system, WCAG 2.2 AA accessibility, i18n/RTL,
 > Core Web Vitals, and the PWA) is front-end and covered in the article; the offline-sync engine is the
 > part that lives in this backend.
+
+## What's in `part-10` (capstone)
+
+Part 10 makes the platform **deployable and production-shaped**, and assembles the full reference architecture.
+
+- **Production observability** — Spring Boot **Actuator** exposes `/actuator/health` with Kubernetes-style
+  **liveness and readiness probes** (`application.yml`), so an orchestrator restarts a wedged instance and
+  routes traffic only to one that's ready (DB connected, migrations applied).
+- **One-command deploy** — a committed **`docker-compose.yml`** brings up PostgreSQL + the app together;
+  the app waits on the database's health check, Postgres data lives in a named volume, and Flyway runs the
+  migrations on startup. `.env.example` documents the config.
+- **A hardened container** — the `Dockerfile` is a multi-stage build that runs as a **non-root user** and
+  carries a `HEALTHCHECK` against the readiness probe.
+- **A live demo console** — the app serves a lightweight browser console at `/` that drives the real API
+  (create tenants, watch isolation, idempotent enroll, conflict-free offline sync). *Not* the production
+  frontend (that's Part 9's subject) — a console so you can see the backend work.
+
+## Deploy &amp; run the whole system
+
+```bash
+git clone https://github.com/muasif80/tutorial-lms-platform.git
+cd tutorial-lms-platform
+cp .env.example .env                 # optional: set DB_PASSWORD etc.
+docker compose up -d --build         # Postgres + the app, schema auto-migrated
+curl localhost:8080/actuator/health  # {"status":"UP"} when ready
+open  http://localhost:8080/         # the demo console
+```
+
+Scale the stateless app horizontally with `docker compose up -d --scale app=3`; in production the same
+image runs on Kubernetes (the probes map straight to the orchestrator) behind a load balancer, with a
+managed, replicated PostgreSQL. See Part 10 for the full production topology and the complete tech stack.
 
 ## Build & run
 
