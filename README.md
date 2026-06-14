@@ -18,7 +18,8 @@ demands it. (Stack rationale and the full design are in Part 1.)
 | 4 — Assessments & Real-Time: Auto-Grading, Live Classes & WebSockets | https://skillsuites.com/lms-assessments-realtime-engine/ |
 | 5 — Learning Analytics: Events, Streaming & the Transactional Outbox | https://skillsuites.com/lms-events-analytics-pipeline/ |
 | 6 — Search, Recommendations & AI Tutoring: Hybrid Search, Cold-Start & RAG | https://skillsuites.com/lms-search-recommendations-personalization/ |
-| 7–10 | published one per day |
+| 7 — Payments, Billing & Subscriptions: Idempotent Webhooks & Entitlements | https://skillsuites.com/lms-payments-billing-subscriptions/ |
+| 8–10 | published one per day |
 
 ## Branches
 
@@ -32,7 +33,8 @@ demands it. (Stack rationale and the full design are in Part 1.)
 | `part-4` | Assessment: deterministic auto-grading, exactly-once submission, attempts policy + timed expiry; plus a real-time fan-out tier (broker seam, presence, missed-message replay) |
 | `part-5` | Events: transactional outbox (atomic event-with-state), at-least-once relay, idempotent progress-projection consumer, tenant-isolated; enroll emits `enrollment.created` |
 | `part-6` | Discovery: keyword/semantic/hybrid catalog search, content-based + cold-start recommendations, zero-downtime alias-swap reindex, hand-rolled tenant isolation in the search store |
-| `part-7` … `part-10` | Added as each article ships |
+| `part-7` | Billing: subscription state machine, separate entitlements, idempotent webhook processing (dedup by PSP event id), Stripe-agnostic gateway port, reconciliation; V5 migration with RLS |
+| `part-8` … `part-10` | Added as each article ships |
 
 ## What's in `part-2`
 
@@ -146,6 +148,27 @@ built as a search-store seam (OpenSearch in production), not Postgres.
   its `tenantId` and every query filters on the current tenant. Leaving Postgres means re-earning isolation.
 - **The proof** — `DiscoverySearchTest` asserts the three search modes, recommendations + cold-start,
   tenant isolation, and the zero-downtime alias swap.
+
+## What's in `part-7`
+
+Part 7 adds the **Billing** context — payments as a distributed-consistency problem, solved.
+
+- **Idempotent webhook processing** (`billing/BillingService.handleWebhook` + `domain/ProcessedWebhook.java`)
+  — a payment processor delivers at least once, so a duplicate webhook is deduped by the processor's event
+  id and becomes a no-op. The same idempotent-consumer pattern as Part 5, now guarding money.
+- **A subscription state machine** (`billing/domain/Subscription.java` + `SubscriptionStatus.java`) — guarded
+  TRIALING → ACTIVE → PAST_DUE → CANCELED transitions with a `@Version` optimistic lock, so an out-of-order
+  or concurrent webhook can't corrupt it. PAST_DUE retains access during the dunning grace window.
+- **Entitlements, separate from subscriptions** (`billing/domain/Entitlement.java`) — the small hot record
+  read on every access check; billing events flip its `active` flag, access control only reads it.
+- **A processor-agnostic port** (`billing/PaymentGateway.java`, `FakePaymentGateway.java`) — Stripe plugs in
+  here; the domain never imports a PSP SDK, so the whole flow is testable without a network call.
+- **Reconciliation as the real source of truth** (`billing/BillingService.reconcile`) — webhooks can be lost
+  or arrive out of order, so a periodic job diffs the database against the processor and repairs drift.
+- **`V5__billing.sql`** mirrors the earlier parts: `tenant_id` + index + Row-Level Security on every billing
+  table; money is stored as integer minor units (cents), never a float.
+- **The proof** — `BillingTest` asserts webhook idempotency, the state machine, grace-window access,
+  reconciliation repairing drift, and tenant isolation.
 
 ## Build & run
 
