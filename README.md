@@ -22,6 +22,8 @@ demands it. (Stack rationale and the full design are in Part 1.)
 | 8 — Interoperability: LTI 1.3, SCORM & xAPI | https://skillsuites.com/lms-interoperability-lti-scorm-xapi/ |
 | 9 — The Experience Layer: Frontend, Accessibility (WCAG 2.2), i18n & Offline | https://skillsuites.com/lms-frontend-accessibility-i18n/ |
 | 10 — Productionizing: Security, Testing, CI/CD, Scaling, SRE & Cost (Capstone) | https://skillsuites.com/lms-production-security-testing-sre/ |
+| 11 — The Working Platform: Login, RBAC & a Server-Rendered UI | https://skillsuites.com/lms-login-rbac-thymeleaf-ui/ |
+| 12–14 — the working end-to-end flows | building |
 
 ## Branches
 
@@ -38,7 +40,8 @@ demands it. (Stack rationale and the full design are in Part 1.)
 | `part-7` | Billing: subscription state machine, separate entitlements, idempotent webhook processing (dedup by PSP event id), Stripe-agnostic gateway port, reconciliation; V5 migration with RLS |
 | `part-8` | Interop: xAPI translation to an LRS (fed by Part 5 events), LTI 1.3 launch validation + AGS grade passback, XXE-hardened SCORM manifest parsing, reliable idempotent SCORM completion capture |
 | `part-9` | Sync: offline-first conflict resolution — grow-only-set union for completed lessons + last-write-wins position cursor, idempotent multi-device merge |
-| `part-10` | Production: Actuator health/liveness/readiness probes, a committed docker-compose deploy, a hardened non-root container, and a live demo console — the system, deployable |
+| `part-10` | Production: Actuator probes, a committed docker-compose deploy, a hardened non-root container — the system, deployable |
+| `part-11` | The working platform: Spring Security login + enforced RBAC, tenant-from-identity, Thymeleaf role dashboards, admin enroll flow, seeded demo tenant |
 
 ## What's in `part-2`
 
@@ -230,6 +233,25 @@ Part 10 makes the platform **deployable and production-shaped**, and assembles t
 - **A live demo console** — the app serves a lightweight browser console at `/` that drives the real API
   (create tenants, watch isolation, idempotent enroll, conflict-free offline sync). *Not* the production
   frontend (that's Part 9's subject) — a console so you can see the backend work.
+
+## What's in `part-11` (series extension — a working platform)
+
+Part 11 turns the backend into a **usable, multi-role platform** with a server-rendered UI.
+
+- **Real login** — Spring Security form login (`auth/SecurityConfig.java`) against a global, tenant-less
+  `Credential` (BCrypt), loaded via `auth/AppUserDetailsService`.
+- **Enforced RBAC** — `/admin/**`, `/instructor/**`, `/learn/**` gated by role; a wrong-role request gets
+  a 403. Roles map to authorities in `auth/UserPrincipal`.
+- **Tenant from the identity** — `auth/TenantPrincipalFilter` pins the tenant from the authenticated user
+  (no more trusted `X-Tenant-Id`); isolation is now driven by who is logged in.
+- **Role dashboards + admin enroll flow** — `web/ui/UiController` + Thymeleaf templates; the admin can
+  add/enroll instructors and students.
+- **Seeded demo tenant** — `config/DataSeeder` creates Acme University + admin/instructor/student logins
+  (password `scholr`) + courses/cohorts/enrollments on first boot, so it is usable immediately.
+- **Swagger** at `/swagger-ui.html`.
+
+Run it: `docker compose up -d --build`, then open `http://localhost:8080/login` and sign in as
+`admin@acme.test` / `instructor@acme.test` / `student@acme.test` (password `scholr`).
 
 ## Deploy &amp; run the whole system
 
