@@ -1,0 +1,41 @@
+<!DOCTYPE html>
+<html lang="en" xmlns:th="http://www.thymeleaf.org">
+<body>
+
+<!-- sidebar(role, active) — role-aware navigation. name + roleLabel come from the model. -->
+<aside class="side" th:fragment="sidebar(role, active)">
+  <div class="brand">Schol<span>r</span></div>
+  <div class="org">ACME UNIVERSITY</div>
+  <span th:class="'rolechip ' + ${role}" th:text="${roleLabel}">Role</span>
+
+  <nav class="nav" th:if="${role == 'admin'}">
+    <a th:href="@{/admin}" th:classappend="${active=='dashboard'}?'active'">🏠 Dashboard</a>
+    <a th:href="@{/admin/people}" th:classappend="${active=='people'}?'active'">👥 People &amp; Roles</a>
+    <a th:href="@{/admin/courses}" th:classappend="${active=='courses'}?'active'">📚 Courses</a>
+    <a th:href="@{/admin/billing}" th:classappend="${active=='billing'}?'active'">💳 Billing</a>
+    <a th:href="@{/admin/reports}" th:classappend="${active=='reports'}?'active'">📊 Reports</a>
+  </nav>
+
+  <nav class="nav" th:if="${role == 'instructor'}">
+    <a th:href="@{/instructor}" th:classappend="${active=='dashboard'}?'active'">🏠 Dashboard</a>
+    <a th:href="@{/instructor/courses}" th:classappend="${active=='courses'}?'active'">✏️ My Courses</a>
+    <a th:href="@{/instructor/cohorts}" th:classappend="${active=='cohorts'}?'active'">👨‍👩‍👧 Cohorts &amp; Roster</a>
+    <a th:href="@{/instructor/grading}" th:classappend="${active=='grading'}?'active'">📝 Grading</a>
+  </nav>
+
+  <nav class="nav" th:if="${role == 'student'}">
+    <a th:href="@{/learn}" th:classappend="${active=='dashboard'}?'active'">🏠 Dashboard</a>
+    <a th:href="@{/learn/catalog}" th:classappend="${active=='catalog'}?'active'">🔎 Course Catalog</a>
+    <a th:href="@{/learn/courses}" th:classappend="${active=='courses'}?'active'">📚 My Learning</a>
+    <a th:href="@{/learn/progress}" th:classappend="${active=='progress'}?'active'">📈 Progress &amp; Certificates</a>
+  </nav>
+
+  <div class="foot">
+    <div>👤 <b th:text="${displayName}">User</b></div>
+    <div th:text="${roleLabel} + ' · Acme University'">Role · Acme University</div>
+    <form method="post" th:action="@{/logout}" action="/logout"><button type="submit">Sign out</button></form>
+  </div>
+</aside>
+
+</body>
+</html>

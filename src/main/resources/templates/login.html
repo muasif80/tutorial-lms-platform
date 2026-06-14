@@ -1,0 +1,42 @@
+<!DOCTYPE html>
+<html lang="en" xmlns:th="http://www.thymeleaf.org">
+<head>
+  <meta charset="utf-8"/>
+  <meta name="viewport" content="width=device-width, initial-scale=1"/>
+  <title>Sign in · Scholr LMS</title>
+  <link rel="stylesheet" th:href="@{/css/app.css}" href="/css/app.css"/>
+</head>
+<body>
+<div class="login">
+  <div class="loginbox">
+    <div class="brand">Schol<span>r</span></div>
+    <h2>Sign in to your learning platform</h2>
+
+    <div class="err" th:if="${param.error}">Incorrect email or password. Try a demo login below.</div>
+    <div class="notice" th:if="${param.logout}">You have been signed out.</div>
+
+    <form method="post" th:action="@{/login}" action="/login">
+      <label for="username">Email</label>
+      <input id="username" name="username" type="email" placeholder="you@acme.test" autofocus required/>
+      <label for="password">Password</label>
+      <input id="password" name="password" type="password" placeholder="••••••••" required/>
+      <button class="btn" type="submit">Sign in</button>
+    </form>
+
+    <div class="demo">
+      <b>Demo logins</b> — password <b>scholr</b> (click to fill):
+      <div class="row" onclick="fill('admin@acme.test')"><span>👑 Admin</span><span>admin@acme.test</span></div>
+      <div class="row" onclick="fill('instructor@acme.test')"><span>🎓 Instructor</span><span>instructor@acme.test</span></div>
+      <div class="row" onclick="fill('student@acme.test')"><span>📚 Student</span><span>student@acme.test</span></div>
+    </div>
+  </div>
+</div>
+<script>
+  function fill(email){
+    document.getElementById('username').value = email;
+    document.getElementById('password').value = 'scholr';
+    document.getElementById('password').focus();
+  }
+</script>
+</body>
+</html>

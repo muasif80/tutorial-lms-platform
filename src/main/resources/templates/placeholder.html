@@ -1,0 +1,24 @@
+<!DOCTYPE html>
+<html lang="en" xmlns:th="http://www.thymeleaf.org">
+<head>
+  <meta charset="utf-8"/>
+  <meta name="viewport" content="width=device-width, initial-scale=1"/>
+  <title>Coming up · Scholr</title>
+  <link rel="stylesheet" th:href="@{/css/app.css}" href="/css/app.css"/>
+</head>
+<body>
+<div class="app">
+  <div th:replace="~{fragments/shell :: sidebar(${role},'')}"></div>
+  <main class="main">
+    <div class="top"><h1>This flow is being built</h1></div>
+    <div class="notice">
+      🚧 This section is part of the end-to-end build (Parts 12–14: the admin console, the instructor
+      workspace, and the student learning experience). The shell, login, RBAC, and dashboards are live;
+      the deeper flows are landing next.
+    </div>
+    <p style="color:var(--muted)">You are signed in as <b th:text="${displayName}">user</b> (<span th:text="${roleLabel}">role</span>).
+       Use the sidebar to move between the working sections.</p>
+  </main>
+</div>
+</body>
+</html>

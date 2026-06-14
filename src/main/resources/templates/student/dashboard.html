@@ -1,0 +1,35 @@
+<!DOCTYPE html>
+<html lang="en" xmlns:th="http://www.thymeleaf.org">
+<head>
+  <meta charset="utf-8"/>
+  <meta name="viewport" content="width=device-width, initial-scale=1"/>
+  <title>My learning · Scholr</title>
+  <link rel="stylesheet" th:href="@{/css/app.css}" href="/css/app.css"/>
+</head>
+<body>
+<div class="app">
+  <div th:replace="~{fragments/shell :: sidebar('student','dashboard')}"></div>
+  <main class="main">
+    <div class="top">
+      <h1>Welcome back, <span th:text="${displayName}">Student</span> 👋</h1>
+      <div class="who">Student · Acme University</div>
+    </div>
+
+    <div class="notice">▶ Continue learning: <b>Multi-Tenant SaaS Architecture</b> — Lesson 7 of 12 · 14 min left &nbsp;
+      <a th:href="@{/learn/courses}">Resume →</a></div>
+
+    <div class="sec">Available courses</div>
+    <div class="grid">
+      <div class="card" th:each="c,it : ${courses}">
+        <div th:class="'thumb t' + (${it.index} % 4 + 1)"></div>
+        <div class="cbody">
+          <h3 th:text="${c.title}">Course</h3>
+          <div class="meta">Acme University · self-paced</div>
+          <div style="margin-top:12px"><a class="btn ghost" th:href="@{/learn/catalog}">View course →</a></div>
+        </div>
+      </div>
+    </div>
+  </main>
+</div>
+</body>
+</html>

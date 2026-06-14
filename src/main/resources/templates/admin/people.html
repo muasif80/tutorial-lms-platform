@@ -1,0 +1,52 @@
+<!DOCTYPE html>
+<html lang="en" xmlns:th="http://www.thymeleaf.org">
+<head>
+  <meta charset="utf-8"/>
+  <meta name="viewport" content="width=device-width, initial-scale=1"/>
+  <title>People &amp; Roles · Scholr</title>
+  <link rel="stylesheet" th:href="@{/css/app.css}" href="/css/app.css"/>
+</head>
+<body>
+<div class="app">
+  <div th:replace="~{fragments/shell :: sidebar('admin','people')}"></div>
+  <main class="main">
+    <div class="top">
+      <h1>People &amp; Roles</h1>
+      <div class="who">Role-based access control · Acme University</div>
+    </div>
+
+    <div class="notice" th:if="${param.added}">✓ Account created. They can sign in with the password you set (default <b>scholr</b>).</div>
+    <div class="err" th:if="${param.dup}">That email already has an account.</div>
+
+    <div class="sec">Add an instructor or student</div>
+    <form method="post" th:action="@{/admin/people}" action="/admin/people" class="formrow">
+      <div class="f"><label>Full name</label><input name="name" placeholder="Jordan Lee" required/></div>
+      <div class="f"><label>Email</label><input name="email" type="email" placeholder="jordan@acme.test" required/></div>
+      <div class="f"><label>Role</label>
+        <select name="role">
+          <option value="INSTRUCTOR">Instructor</option>
+          <option value="LEARNER">Student</option>
+          <option value="ORG_ADMIN">Admin</option>
+        </select>
+      </div>
+      <div class="f"><label>Temp password</label><input name="password" placeholder="scholr"/></div>
+      <div><button class="btn" type="submit">＋ Add &amp; enroll</button></div>
+    </form>
+
+    <div class="sec">Everyone at Acme University</div>
+    <div class="panel">
+      <table>
+        <thead><tr><th>Name</th><th>Email</th><th>Role</th></tr></thead>
+        <tbody>
+          <tr th:each="p : ${people}">
+            <td th:text="${p.name}">Name</td>
+            <td th:text="${p.email}">email</td>
+            <td><span th:class="'tag ' + (${p.role.name()=='ORG_ADMIN'}?'admin':(${p.role.name()=='INSTRUCTOR'}?'instructor':'student'))" th:text="${p.roleLabel}">Role</span></td>
+          </tr>
+        </tbody>
+      </table>
+    </div>
+  </main>
+</div>
+</body>
+</html>

@@ -1,0 +1,40 @@
+<!DOCTYPE html>
+<html lang="en" xmlns:th="http://www.thymeleaf.org">
+<head>
+  <meta charset="utf-8"/>
+  <meta name="viewport" content="width=device-width, initial-scale=1"/>
+  <title>Instructor · Scholr</title>
+  <link rel="stylesheet" th:href="@{/css/app.css}" href="/css/app.css"/>
+</head>
+<body>
+<div class="app">
+  <div th:replace="~{fragments/shell :: sidebar('instructor','dashboard')}"></div>
+  <main class="main">
+    <div class="top">
+      <h1>Instructor workspace</h1>
+      <div class="who">Signed in as <b th:text="${displayName}">Instructor</b> · Instructor</div>
+    </div>
+
+    <div class="stats">
+      <div class="stat c"><div class="n" th:text="${#lists.size(courses)}">4</div><div class="l">Courses</div></div>
+      <div class="stat s"><div class="n" th:text="${students}">4</div><div class="l">Enrolled students</div></div>
+      <div class="stat i"><div class="n">2</div><div class="l">Active cohorts</div></div>
+      <div class="stat a"><div class="n">12</div><div class="l">To grade</div></div>
+    </div>
+
+    <div class="sec">My courses</div>
+    <div style="margin-bottom:14px"><a class="btn" th:href="@{/instructor/courses}">＋ Create a course</a></div>
+    <div class="grid">
+      <div class="card" th:each="c,it : ${courses}">
+        <div th:class="'thumb t' + (${it.index} % 4 + 1)"></div>
+        <div class="cbody">
+          <h3 th:text="${c.title}">Course</h3>
+          <div class="meta" th:text="${c.published} ? 'Published' : 'Draft'">Draft</div>
+          <div class="bar"><i th:style="'width:' + (${it.index}*17 + 20) + '%'"></i></div>
+        </div>
+      </div>
+    </div>
+  </main>
+</div>
+</body>
+</html>

@@ -14,6 +14,11 @@ spring:
   flyway:
     enabled: true
 
+# Part 11: seed a usable demo tenant (admin/instructor/student logins + courses) on first startup.
+# Idempotent (only seeds an empty DB). Absent in tests, so the suite never seeds.
+scholr:
+  seed: true
+
 # Part 10: production observability. Actuator exposes a health endpoint with Kubernetes-style
 # liveness and readiness probes, so an orchestrator can restart a wedged pod (liveness) and only route
 # traffic to one that is ready — DB connected, migrations applied (readiness). Only health/info are

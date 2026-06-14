@@ -1,0 +1,42 @@
+<!DOCTYPE html>
+<html lang="en" xmlns:th="http://www.thymeleaf.org">
+<head>
+  <meta charset="utf-8"/>
+  <meta name="viewport" content="width=device-width, initial-scale=1"/>
+  <title>Admin · Scholr</title>
+  <link rel="stylesheet" th:href="@{/css/app.css}" href="/css/app.css"/>
+</head>
+<body>
+<div class="app">
+  <div th:replace="~{fragments/shell :: sidebar('admin','dashboard')}"></div>
+  <main class="main">
+    <div class="top">
+      <h1>Admin dashboard</h1>
+      <div class="who">Signed in as <b th:text="${displayName}">Admin</b> · Admin</div>
+    </div>
+
+    <div class="stats">
+      <div class="stat a"><div class="n" th:text="${admins}">1</div><div class="l">Admins</div></div>
+      <div class="stat i"><div class="n" th:text="${instructors}">2</div><div class="l">Instructors</div></div>
+      <div class="stat s"><div class="n" th:text="${students}">4</div><div class="l">Students</div></div>
+      <div class="stat c"><div class="n" th:text="${courseCount}">4</div><div class="l">Courses</div></div>
+    </div>
+
+    <div class="sec">People &amp; roles</div>
+    <div style="margin-bottom:14px"><a class="btn" th:href="@{/admin/people}">＋ Add instructor or student</a></div>
+    <div class="panel">
+      <table>
+        <thead><tr><th>Name</th><th>Email</th><th>Role</th></tr></thead>
+        <tbody>
+          <tr th:each="p : ${people}">
+            <td th:text="${p.name}">Name</td>
+            <td th:text="${p.email}">email</td>
+            <td><span th:class="'tag ' + (${p.role.name()=='ORG_ADMIN'}?'admin':(${p.role.name()=='INSTRUCTOR'}?'instructor':'student'))" th:text="${p.roleLabel}">Role</span></td>
+          </tr>
+        </tbody>
+      </table>
+    </div>
+  </main>
+</div>
+</body>
+</html>
