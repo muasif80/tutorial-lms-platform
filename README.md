@@ -14,7 +14,8 @@ demands it. (Stack rationale and the full design are in Part 1.)
 |------|---------|
 | 1 — Product, Domain & Architecture | https://skillsuites.com/lms-architecture-product-domain-design/ |
 | 2 — Data Model, Multi-Tenancy & APIs | https://skillsuites.com/lms-backend-data-model-multi-tenancy/ |
-| 3–10 | published one per day |
+| 3 — Serving Course Video at Scale: Storage, Transcoding & CDN | https://skillsuites.com/lms-video-content-delivery-cdn/ |
+| 4–10 | published one per day |
 
 ## Branches
 
@@ -24,7 +25,8 @@ demands it. (Stack rationale and the full design are in Part 1.)
 |--------|-------|
 | `part-1` | Product & domain: the module structure + the domain model in code |
 | `part-2` | Persistence: multi-tenant data model, `@TenantId` + RLS, idempotent enrollment, REST API |
-| `part-3` … `part-10` | Added as each article ships |
+| `part-3` | Media: video assets, an idempotent transcoding pipeline (off the request path), an HLS/ABR ladder, and signed CDN playback URLs |
+| `part-4` … `part-10` | Added as each article ships |
 
 ## What's in `part-2`
 
@@ -43,6 +45,31 @@ Part 2 turns the design into a **persistent, multi-tenant backend**:
 - An integration test (`MultiTenancyAndEnrollmentTest`) that **proves** tenant isolation, idempotency, and
   the seat cap on a real persistence stack — alongside the Part 1 ArchUnit boundary checks.
 
+## What's in `part-3`
+
+Part 3 adds the **Media** bounded context — course video at scale, where an LMS's cost and reliability
+usually go to die. The architectural rule is simple and load-bearing: **multi-gigabyte bytes never touch
+the app servers**. Uploads go directly to object storage via a presigned URL; playback bytes come from the
+CDN via a signed URL. The app only ever moves small JSON.
+
+- **The Media aggregate** (`media/domain/`) — a `VideoAsset` with a guarded lifecycle
+  (`UPLOADED → TRANSCODING → READY/FAILED`, with a `@Version` optimistic lock so a duplicate transcoder
+  callback can't double-process it), a `VideoRendition` ladder (the adaptive-bitrate / HLS rungs), and a
+  `TranscodeJob`. Cross-aggregate references are by id (UUID), never by JPA association — the series rule.
+- **Transcoding off the request path, idempotently** (`MediaService.enqueueTranscode`) — the upload handler
+  only persists a job row and returns; a worker drains the queue out of band. The job is keyed on a
+  per-tenant `idempotency_key`, so a duplicated upload callback or a client retry resolves to the same job
+  instead of paying for a second (expensive) transcode. Recording renditions is idempotent too, via a
+  `(tenant_id, asset_id, height)` unique constraint — the same defense Part 2 used for idempotent enroll.
+- **Signed CDN playback URLs** (`media/SignedUrlIssuer`) — short-lived, HMAC-signed, tamper-proof URLs bound
+  to a path and an expiry. A leaked URL is useless within minutes and a learner cannot forge one without the
+  signing key, which never leaves the server. This is the access-control boundary for paid video.
+- **`V2__media.sql`** mirrors V1 exactly: a `tenant_id` column, an index on it, and PostgreSQL Row-Level
+  Security on every new table, so a cross-tenant media leak is structurally impossible, not merely unlikely.
+- **`MediaTest`** proves tenant isolation on assets, idempotent enqueue, the full ABR ladder being packaged
+  (and not doubled on a duplicate callback), and that the signed URL genuinely rejects tampering, expiry,
+  path-swapping, and a wrong signing key.
+
 > Tests run on in-memory H2 (PostgreSQL mode); the RLS policy itself is Postgres-only and ships in the
 > Flyway migration for real deployments. `mvn verify` runs the whole proof.
 
@@ -55,7 +82,7 @@ docker run --rm -p 8080:8080 scholr-lms
 # then: curl localhost:8080/health   and   curl localhost:8080/contexts
 
 # or with local Maven + Java 21:
-mvn verify          # compiles + runs the unit and architecture tests
+mvn verify          # compiles + runs the unit, persistence, and architecture tests
 mvn spring-boot:run
 ```
 
