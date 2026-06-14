@@ -16,7 +16,8 @@ demands it. (Stack rationale and the full design are in Part 1.)
 | 2 — Data Model, Multi-Tenancy & APIs | https://skillsuites.com/lms-backend-data-model-multi-tenancy/ |
 | 3 — Serving Course Video at Scale: Storage, Transcoding & CDN | https://skillsuites.com/lms-video-content-delivery-cdn/ |
 | 4 — Assessments & Real-Time: Auto-Grading, Live Classes & WebSockets | https://skillsuites.com/lms-assessments-realtime-engine/ |
-| 5–10 | published one per day |
+| 5 — Learning Analytics: Events, Streaming & the Transactional Outbox | https://skillsuites.com/lms-events-analytics-pipeline/ |
+| 6–10 | published one per day |
 
 ## Branches
 
@@ -28,7 +29,8 @@ demands it. (Stack rationale and the full design are in Part 1.)
 | `part-2` | Persistence: multi-tenant data model, `@TenantId` + RLS, idempotent enrollment, REST API |
 | `part-3` | Media: video assets, an idempotent transcoding pipeline (off the request path), an HLS/ABR ladder, and signed CDN playback URLs |
 | `part-4` | Assessment: deterministic auto-grading, exactly-once submission, attempts policy + timed expiry; plus a real-time fan-out tier (broker seam, presence, missed-message replay) |
-| `part-5` … `part-10` | Added as each article ships |
+| `part-5` | Events: transactional outbox (atomic event-with-state), at-least-once relay, idempotent progress-projection consumer, tenant-isolated; enroll emits `enrollment.created` |
+| `part-6` … `part-10` | Added as each article ships |
 
 ## What's in `part-2`
 
@@ -100,6 +102,28 @@ real-time meets scale.
   + broker fan-out scale a 50k-person class; no node owns the room.
 - **`MediaTest`-style proof** — `AssessmentAndRealtimeTest` asserts deterministic grading, idempotent
   submission, the server-side attempts policy, tenant isolation, and the fan-out + replay contract.
+
+## What's in `part-5`
+
+Part 5 adds the **Events** context — the reliable backbone every analytics feature is downstream of.
+
+- **The transactional outbox** (`events/domain/OutboxEvent.java` + `events/OutboxWriter.java`) — the
+  writer has no transaction of its own, so it joins the caller's: the event row is inserted in the
+  *same* DB transaction as the state change. `EnrollmentService.enroll` now emits `enrollment.created`
+  this way, closing the dual-write gap where database and event stream could diverge.
+- **An at-least-once relay** (`events/OutboxRelay.java`) ships unpublished events through an
+  `EventPublisher` port (Kafka plugs in here; `InMemoryEventPublisher` is the default), ship-then-mark
+  so a crash re-ships rather than loses.
+- **An idempotent consumer** (`events/ProgressProjection.java` + `events/domain/ProcessedEvent.java`) —
+  records each event id before acting and skips ids already seen, turning at-least-once delivery into
+  exactly-once *effects*. Progress is modeled as a fold over idempotent facts, so replay and redelivery
+  reproduce identical numbers.
+- **A rebuildable read model** (`events/domain/LearnerProgress.java`) — a projection, eventually
+  consistent, never the source of truth; delete it and replay the log to reconstruct it.
+- **`V4__events.sql`** mirrors V1–V3: `tenant_id` + index + Row-Level Security on the outbox, dedup, and
+  progress tables, so the whole pipeline is tenant-isolated.
+- **The proof** — `EventsPipelineTest` asserts the atomic outbox write, the at-least-once relay, an
+  idempotent consumer that won't double-count a redelivered event, and correct progress from the stream.
 
 ## Build & run
 
