@@ -19,7 +19,8 @@ demands it. (Stack rationale and the full design are in Part 1.)
 | 5 — Learning Analytics: Events, Streaming & the Transactional Outbox | https://skillsuites.com/lms-events-analytics-pipeline/ |
 | 6 — Search, Recommendations & AI Tutoring: Hybrid Search, Cold-Start & RAG | https://skillsuites.com/lms-search-recommendations-personalization/ |
 | 7 — Payments, Billing & Subscriptions: Idempotent Webhooks & Entitlements | https://skillsuites.com/lms-payments-billing-subscriptions/ |
-| 8–10 | published one per day |
+| 8 — Interoperability: LTI 1.3, SCORM & xAPI | https://skillsuites.com/lms-interoperability-lti-scorm-xapi/ |
+| 9–10 | published one per day |
 
 ## Branches
 
@@ -34,7 +35,8 @@ demands it. (Stack rationale and the full design are in Part 1.)
 | `part-5` | Events: transactional outbox (atomic event-with-state), at-least-once relay, idempotent progress-projection consumer, tenant-isolated; enroll emits `enrollment.created` |
 | `part-6` | Discovery: keyword/semantic/hybrid catalog search, content-based + cold-start recommendations, zero-downtime alias-swap reindex, hand-rolled tenant isolation in the search store |
 | `part-7` | Billing: subscription state machine, separate entitlements, idempotent webhook processing (dedup by PSP event id), Stripe-agnostic gateway port, reconciliation; V5 migration with RLS |
-| `part-8` … `part-10` | Added as each article ships |
+| `part-8` | Interop: xAPI translation to an LRS (fed by Part 5 events), LTI 1.3 launch validation + AGS grade passback, XXE-hardened SCORM manifest parsing, reliable idempotent SCORM completion capture |
+| `part-9` … `part-10` | Added as each article ships |
 
 ## What's in `part-2`
 
@@ -169,6 +171,26 @@ Part 7 adds the **Billing** context — payments as a distributed-consistency pr
   table; money is stored as integer minor units (cents), never a float.
 - **The proof** — `BillingTest` asserts webhook idempotency, the state machine, grace-window access,
   reconciliation repairing drift, and tenant isolation.
+
+## What's in `part-8`
+
+Part 8 adds the **Interop** context — the standards (LTI 1.3, SCORM, xAPI) that make an LMS sellable to
+institutions, built as bridging seams (no JPA of its own).
+
+- **xAPI as a translation of your event stream** (`interop/XapiTranslator.java` + the
+  `LearningRecordStore` port / `InMemoryLrs.java`) — internal events become actor-verb-object statements
+  in a Learning Record Store; your Part 5 stream *is* your LRS feed. Tenant-filtered by hand (no RLS in
+  the LRS).
+- **LTI 1.3 launch validation** (`interop/LtiLaunchValidator.java`) — verify the signed launch (HMAC
+  stand-in for RS256/JWKS) and check expiry **before** trusting any claim; reject tampered/expired launches.
+- **AGS grade passback** (`interop/LtiPlatform.java` + `InteropService.passbackGrade`) — report a score
+  back to the platform's gradebook.
+- **XXE-hardened SCORM manifest parsing** (`interop/ScormManifestParser.java`) — SCORM packages are
+  untrusted input, so the parser disables DTDs and external entities before reading a byte.
+- **Reliable, idempotent SCORM completion capture** (`InteropService.commitScormCompletion`) — the
+  war-story fix: a stable derived statement id means a doubled runtime commit is captured exactly once.
+- **The proof** — `InteropTest` asserts launch validation, tampered/expired rejection, grade passback,
+  XXE rejection, and idempotent completion capture.
 
 ## Build & run
 
