@@ -44,6 +44,7 @@ public class AssessmentService {
     private final AutoGrader grader;
     private final Clock clock;
 
+    @org.springframework.beans.factory.annotation.Autowired
     public AssessmentService(AssessmentRepository assessments, QuestionRepository questions,
                              AttemptRepository attempts) {
         this(assessments, questions, attempts, new AutoGrader(), Clock.systemUTC());
@@ -90,12 +91,24 @@ public class AssessmentService {
     public Attempt startAttempt(UUID assessmentId, UUID learnerId) {
         Assessment assessment = loadAssessment(assessmentId);
         List<Attempt> existing = attempts.findByAssessmentIdAndLearnerId(assessmentId, learnerId);
-        long started = existing.size();
-        if (!assessment.allowsAnotherAttempt(started)) {
-            throw new AttemptPolicyException(assessmentId,
-                "no attempts remaining (" + started + "/" + assessment.maxAttempts() + ")");
+
+        // Resume, don't restart: if the learner already has an attempt in progress, return it.
+        // This makes "start" idempotent — a retried request after a dropped response, or a second
+        // device, resumes the same attempt rather than consuming another from the policy budget.
+        for (Attempt a : existing) {
+            if (!a.isGraded()) {
+                return a;
+            }
         }
-        int nextNo = (int) started + 1;
+
+        // Every existing attempt is graded, so this would be a genuinely new one — now the
+        // attempts policy applies, measured against attempts that actually counted.
+        long completed = existing.size();
+        if (!assessment.allowsAnotherAttempt(completed)) {
+            throw new AttemptPolicyException(assessmentId,
+                "no attempts remaining (" + completed + "/" + assessment.maxAttempts() + ")");
+        }
+        int nextNo = (int) completed + 1;
         return attempts.findByAssessmentIdAndLearnerIdAndAttemptNo(assessmentId, learnerId, nextNo)
             .orElseGet(() -> {
                 Instant now = clock.instant();

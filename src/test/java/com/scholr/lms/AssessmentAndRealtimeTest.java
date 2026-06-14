@@ -108,13 +108,15 @@ class AssessmentAndRealtimeTest {
         setUpTenant();
         AppUser learner = identity.createUser("l3@acme.test", "Learner Three");
         UUID courseId = UUID.randomUUID();
-        Assessment quiz = assessments.createAssessment(courseId, "Quiz", 0 /* unlimited */, 0);
+        Assessment quiz = assessments.createAssessment(courseId, "Quiz", 1 /* one attempt */, 0);
 
-        // Without an intervening submit, "start the next attempt" resolves to the same attempt #1,
-        // not two separate attempts — the natural-key find-or-create caps double-counting.
+        // No submit in between, so the attempt count stays 0 and both calls compute the same
+        // next number (#1). The natural-key find-or-create resolves both to the SAME attempt row
+        // instead of double-counting — this is the idempotency that survives a client retry on a
+        // dropped "start" response. (A genuine new attempt requires the previous one to be graded.)
         Attempt a = assessments.startAttempt(quiz.id(), learner.id());
         Attempt again = assessments.startAttempt(quiz.id(), learner.id());
-        assertEquals(a.id(), again.id());
+        assertEquals(a.id(), again.id(), "re-issuing start of the same attempt number returns one row");
         assertEquals(1, again.attemptNo());
     }
 
