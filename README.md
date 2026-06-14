@@ -15,7 +15,8 @@ demands it. (Stack rationale and the full design are in Part 1.)
 | 1 — Product, Domain & Architecture | https://skillsuites.com/lms-architecture-product-domain-design/ |
 | 2 — Data Model, Multi-Tenancy & APIs | https://skillsuites.com/lms-backend-data-model-multi-tenancy/ |
 | 3 — Serving Course Video at Scale: Storage, Transcoding & CDN | https://skillsuites.com/lms-video-content-delivery-cdn/ |
-| 4–10 | published one per day |
+| 4 — Assessments & Real-Time: Auto-Grading, Live Classes & WebSockets | https://skillsuites.com/lms-assessments-realtime-engine/ |
+| 5–10 | published one per day |
 
 ## Branches
 
@@ -26,7 +27,8 @@ demands it. (Stack rationale and the full design are in Part 1.)
 | `part-1` | Product & domain: the module structure + the domain model in code |
 | `part-2` | Persistence: multi-tenant data model, `@TenantId` + RLS, idempotent enrollment, REST API |
 | `part-3` | Media: video assets, an idempotent transcoding pipeline (off the request path), an HLS/ABR ladder, and signed CDN playback URLs |
-| `part-4` … `part-10` | Added as each article ships |
+| `part-4` | Assessment: deterministic auto-grading, exactly-once submission, attempts policy + timed expiry; plus a real-time fan-out tier (broker seam, presence, missed-message replay) |
+| `part-5` … `part-10` | Added as each article ships |
 
 ## What's in `part-2`
 
@@ -72,6 +74,32 @@ CDN via a signed URL. The app only ever moves small JSON.
 
 > Tests run on in-memory H2 (PostgreSQL mode); the RLS policy itself is Postgres-only and ships in the
 > Flyway migration for real deployments. `mvn verify` runs the whole proof.
+
+## What's in `part-4`
+
+Part 4 adds the **Assessment** context and a **real-time** tier — where correctness meets scale and
+real-time meets scale.
+
+- **A deterministic auto-grading engine** (`assessment/AutoGrader.java`) — a pure function (no Spring,
+  no DB, no clock, no randomness) that scores single-choice (all-or-nothing), multiple-choice
+  (proportional partial credit, floored at zero), and short-text (normalized exact match). Reproducible
+  on any node, so a grade is defensible; judgment items are never faked. Specced by `AutoGraderTest`.
+- **Exactly-once submission** (`assessment/domain/Attempt.java` + `AssessmentService.java`) — a one-way
+  `IN_PROGRESS → SUBMITTED/EXPIRED` transition guarded so it grades only once, plus a `@Version`
+  optimistic lock. A duplicate submit (double-click, retry, queue redelivery) returns the
+  already-recorded grade instead of regrading — the Part 2 idempotent-write discipline applied to exams.
+- **Attempts policy + timed expiry** (`Assessment.java`) — the server, not the client, decides whether
+  another attempt is allowed; "start" resumes an in-progress attempt rather than burning the budget; a
+  submit past the deadline is graded on saved answers and marked `EXPIRED` (never lost, never extended).
+  Proven by `TimedAttemptTest`.
+- **`V3__assessment.sql`** mirrors V1/V2: `tenant_id` + index + PostgreSQL Row-Level Security on every
+  new table, so a cross-tenant leak stays structurally impossible.
+- **A real-time fan-out tier** (`realtime/`) — a `MessageBroker` port (the seam Redis pub/sub plugs into),
+  an in-memory implementation for tests, and a `LiveClassRoom` with presence and sequence-numbered
+  messages so a reconnecting client replays exactly what it missed. The design point: stateless gateways
+  + broker fan-out scale a 50k-person class; no node owns the room.
+- **`MediaTest`-style proof** — `AssessmentAndRealtimeTest` asserts deterministic grading, idempotent
+  submission, the server-side attempts policy, tenant isolation, and the fan-out + replay contract.
 
 ## Build & run
 
