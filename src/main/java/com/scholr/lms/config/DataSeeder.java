@@ -19,7 +19,6 @@ import org.springframework.boot.ApplicationRunner;
 import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Component;
-import org.springframework.transaction.annotation.Transactional;
 
 /**
  * Seeds a usable demo tenant on first startup so you can log in and use the platform immediately — an
@@ -52,13 +51,14 @@ public class DataSeeder implements ApplicationRunner {
     }
 
     @Override
-    @Transactional
     public void run(org.springframework.boot.ApplicationArguments args) {
         if (credentials.count() > 0) {
             return; // already seeded
         }
 
-        // 1) the tenant
+        // 1) the tenant. NOTE: deliberately NOT wrapped in a single @Transactional — Hibernate's
+        // @TenantId resolver fixes the session's tenant when the session opens, so the tenant context
+        // must be set BEFORE the tenant-scoped saves begin (each service call opens its own session).
         Organization org = identity.createOrganization("Acme University");
         TenantContext.set(TenantId.of(org.id()));
         try {
