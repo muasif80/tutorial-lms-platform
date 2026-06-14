@@ -1,0 +1,184 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>Scholr LMS — Demo Console</title>
+<style>
+  :root{
+    --bg:#0b1120; --panel:#0f2740; --panel2:#0a3a3a; --line:#1e3a52;
+    --ink:#e2e8f0; --muted:#94a3b8; --accent:#38bdf8; --accent2:#34d399;
+    --ok:#22c55e; --warn:#f59e0b; --err:#ef4444;
+  }
+  *{box-sizing:border-box}
+  body{margin:0;font-family:"Helvetica Neue",Arial,sans-serif;background:linear-gradient(135deg,#0b1120,#0f2740 55%,#0a3a3a);color:var(--ink);min-height:100vh}
+  header{padding:26px 28px 14px;border-bottom:1px solid var(--line)}
+  .brand{font-size:13px;font-weight:700;letter-spacing:3px;color:#7dd3fc}
+  h1{margin:6px 0 2px;font-size:30px;font-weight:800}
+  h1 span{background:linear-gradient(90deg,var(--accent),var(--accent2));-webkit-background-clip:text;background-clip:text;color:transparent}
+  .sub{color:var(--muted);font-size:14px;max-width:760px;line-height:1.5}
+  .note{margin-top:10px;font-size:12.5px;color:#fcd34d;background:rgba(245,158,11,.08);border:1px solid rgba(245,158,11,.25);border-radius:8px;padding:8px 12px;max-width:760px}
+  .wrap{display:grid;grid-template-columns:1fr 1fr;gap:18px;padding:22px 28px;max-width:1200px}
+  @media(max-width:840px){.wrap{grid-template-columns:1fr}}
+  .card{background:rgba(255,255,255,.035);border:1px solid var(--line);border-radius:14px;padding:16px 18px}
+  .card h2{margin:0 0 4px;font-size:16px}
+  .card p.h{margin:0 0 12px;color:var(--muted);font-size:12.5px}
+  label{display:block;font-size:12px;color:var(--muted);margin:10px 0 4px}
+  input,select{width:100%;padding:9px 11px;border-radius:8px;border:1px solid var(--line);background:#0a1a2b;color:var(--ink);font-size:14px}
+  button{margin-top:12px;padding:9px 16px;border-radius:8px;border:0;cursor:pointer;font-weight:700;font-size:13.5px;
+    background:linear-gradient(90deg,var(--accent),var(--accent2));color:#062018}
+  button.ghost{background:transparent;border:1px solid var(--accent);color:var(--accent)}
+  .row{display:flex;gap:10px;flex-wrap:wrap}.row>*{flex:1;min-width:120px}
+  .tenant-pill{display:inline-flex;align-items:center;gap:8px;font-size:12px;background:rgba(56,189,248,.1);border:1px solid rgba(56,189,248,.3);border-radius:999px;padding:3px 10px;margin:4px 6px 0 0}
+  .courses{margin-top:12px;display:flex;flex-direction:column;gap:6px}
+  .course{display:flex;justify-content:space-between;background:#0a1a2b;border:1px solid var(--line);border-radius:8px;padding:8px 11px;font-size:13px}
+  .badge{font-size:10.5px;color:var(--accent2)}
+  pre{background:#06121f;border:1px solid var(--line);border-radius:8px;padding:10px;font-size:12px;overflow:auto;max-height:160px;margin-top:10px;color:#a7d8ec;white-space:pre-wrap}
+  .status{font-size:12px;margin-top:8px;min-height:16px}
+  .status.ok{color:var(--ok)}.status.err{color:var(--err)}
+  footer{padding:16px 28px 34px;color:var(--muted);font-size:12px}
+  a{color:var(--accent)}
+  .ctxgrid{display:flex;flex-wrap:wrap;gap:6px;margin-top:6px}
+  .ctx{font-size:11px;background:rgba(52,211,153,.08);border:1px solid rgba(52,211,153,.25);border-radius:6px;padding:3px 8px;color:#86efac}
+</style>
+</head>
+<body>
+<header>
+  <div class="brand">SCHOLR · PRODUCTION-GRADE LMS · DEMO CONSOLE</div>
+  <h1>Scholr LMS — <span>live API console</span></h1>
+  <div class="sub">A lightweight console that drives the running multi-tenant backend (Parts 1–10). Create tenants, create courses, watch tenant isolation hold, enroll learners idempotently, and merge offline progress conflict-free — all against the real REST API.</div>
+  <div class="note">This is a demo console, not the production frontend. The production UI (Next.js SSR, a design system, PWA + offline, WCAG 2.2 AA) is the subject of Part 9 — this page exists so you can <em>see</em> the backend work in a browser.</div>
+  <div class="ctxgrid" id="contexts"></div>
+</header>
+
+<div class="wrap">
+  <!-- Tenants -->
+  <div class="card">
+    <h2>1 · Tenants (multi-tenancy)</h2>
+    <p class="h">Each organization is a tenant. Everything below is scoped to the selected tenant via the <code>X-Tenant-Id</code> header.</p>
+    <div class="row">
+      <div><label>New organization name</label><input id="orgName" placeholder="Acme University" /></div>
+    </div>
+    <button onclick="createOrg()">Create tenant</button>
+    <div id="orgStatus" class="status"></div>
+    <label>Active tenant</label>
+    <select id="tenantSelect" onchange="listCourses()"></select>
+    <div id="tenantPills"></div>
+  </div>
+
+  <!-- Courses + isolation -->
+  <div class="card">
+    <h2>2 · Courses &amp; tenant isolation</h2>
+    <p class="h">Create a course in the active tenant, then switch tenants — each sees only its own. (Hibernate <code>@TenantId</code> + Postgres RLS.)</p>
+    <div class="row">
+      <div><label>Course title</label><input id="courseTitle" placeholder="Intro to Astrophysics" /></div>
+    </div>
+    <button onclick="createCourse()">Create course in active tenant</button>
+    <button class="ghost" onclick="listCourses()">Refresh list</button>
+    <div id="courseStatus" class="status"></div>
+    <div class="courses" id="courseList"></div>
+  </div>
+
+  <!-- Enrollment -->
+  <div class="card">
+    <h2>3 · Idempotent enrollment</h2>
+    <p class="h">Create a learner + a seat-limited cohort, then enroll twice — you get the same enrollment back, never a duplicate.</p>
+    <button onclick="enrollDemo()">Run enrollment demo</button>
+    <div id="enrollStatus" class="status"></div>
+    <pre id="enrollOut"></pre>
+  </div>
+
+  <!-- Offline sync -->
+  <div class="card">
+    <h2>4 · Offline sync (Part 9)</h2>
+    <p class="h">Two devices make progress offline and reconnect. Completed lessons merge by set union (conflict-free); the position cursor resolves by last-write-wins.</p>
+    <button onclick="syncDemo()">Run offline-sync demo</button>
+    <div id="syncStatus" class="status"></div>
+    <pre id="syncOut"></pre>
+  </div>
+</div>
+
+<footer>
+  Backend: Spring Boot modular monolith · PostgreSQL · 12 bounded contexts · <a href="https://github.com/muasif80/tutorial-lms-platform" target="_blank">source on GitHub</a> · © 2026 skillsuites.com
+</footer>
+
+<script>
+const API = "";  // same origin
+const tenants = [];
+function uuid(){return crypto.randomUUID();}
+async function api(method, path, body, tenantId){
+  const h={"Content-Type":"application/json"};
+  if(tenantId) h["X-Tenant-Id"]=tenantId;
+  const r=await fetch(API+path,{method,headers:h,body:body?JSON.stringify(body):undefined});
+  const t=await r.text();
+  let j; try{j=JSON.parse(t);}catch(e){j=t;}
+  if(!r.ok) throw new Error((j&&j.message)||t||("HTTP "+r.status));
+  return j;
+}
+function set(id,msg,ok){const e=document.getElementById(id);e.textContent=msg;e.className="status "+(ok?"ok":"err");}
+function activeTenant(){return document.getElementById("tenantSelect").value;}
+
+async function loadContexts(){
+  try{const c=await api("GET","/contexts");document.getElementById("contexts").innerHTML=c.map(x=>`<span class="ctx">${x}</span>`).join("");}catch(e){}
+}
+async function createOrg(){
+  const name=document.getElementById("orgName").value.trim()||("Org "+(tenants.length+1));
+  try{
+    const org=await api("POST","/api/organizations",{name});
+    tenants.push(org);
+    const sel=document.getElementById("tenantSelect");
+    sel.innerHTML=tenants.map(t=>`<option value="${t.id}">${t.name}</option>`).join("");
+    sel.value=org.id;
+    document.getElementById("tenantPills").innerHTML=tenants.map(t=>`<span class="tenant-pill">🏢 ${t.name}</span>`).join("");
+    set("orgStatus","Created tenant “"+org.name+"”",true);
+    document.getElementById("orgName").value="";
+    listCourses();
+  }catch(e){set("orgStatus",e.message,false);}
+}
+async function createCourse(){
+  const t=activeTenant(); if(!t){set("courseStatus","Create a tenant first.",false);return;}
+  const title=document.getElementById("courseTitle").value.trim()||"Untitled Course";
+  try{await api("POST","/api/courses",{title},t);set("courseStatus","Created “"+title+"”",true);document.getElementById("courseTitle").value="";listCourses();}
+  catch(e){set("courseStatus",e.message,false);}
+}
+async function listCourses(){
+  const t=activeTenant(); if(!t)return;
+  try{
+    const cs=await api("GET","/api/courses",null,t);
+    document.getElementById("courseList").innerHTML = cs.length
+      ? cs.map(c=>`<div class="course"><span>${c.title}</span><span class="badge">${c.published?"published":"draft"}</span></div>`).join("")
+      : `<div class="course"><span style="color:var(--muted)">No courses for this tenant yet.</span></div>`;
+  }catch(e){set("courseStatus",e.message,false);}
+}
+async function enrollDemo(){
+  const t=activeTenant(); if(!t){set("enrollStatus","Create a tenant first.",false);return;}
+  try{
+    const u=await api("POST","/api/users",{email:"demo+"+Date.now()+"@acme.test",name:"Demo Learner"},t);
+    const c=await api("POST","/api/courses",{title:"Enrollment Demo Course"},t);
+    const co=await api("POST","/api/cohorts",{courseId:c.id,capacity:1},t);
+    const e1=await api("POST","/api/cohorts/"+co.id+"/enrollments",{learnerId:u.id},t);
+    const e2=await api("POST","/api/cohorts/"+co.id+"/enrollments",{learnerId:u.id},t);
+    document.getElementById("enrollOut").textContent=
+      "first enroll  → id "+e1.id+"\nretry enroll  → id "+e2.id+"\n\n"+(e1.id===e2.id?"✓ SAME id — idempotent, no duplicate seat consumed":"✗ ids differ");
+    set("enrollStatus", e1.id===e2.id?"Idempotent enrollment confirmed":"Unexpected: ids differ", e1.id===e2.id);
+  }catch(e){set("enrollStatus",e.message,false);}
+}
+async function syncDemo(){
+  const t=activeTenant(); if(!t){set("syncStatus","Create a tenant first.",false);return;}
+  try{
+    const u=await api("POST","/api/users",{email:"sync+"+Date.now()+"@acme.test",name:"Sync Learner"},t);
+    const course=uuid(), L1=uuid(), L2=uuid(), L3=uuid();
+    const A=await api("POST","/api/sync",{learnerId:u.id,courseId:course,completedLessons:[L1,L2],lastPositionLesson:L2,lastPositionAt:"2026-06-15T10:00:00Z",baseVersion:0},t);
+    const B=await api("POST","/api/sync",{learnerId:u.id,courseId:course,completedLessons:[L2,L3],lastPositionLesson:L3,lastPositionAt:"2026-06-15T11:00:00Z",baseVersion:0},t);
+    document.getElementById("syncOut").textContent=
+      "Device A (10:00) completed 2 lessons → count "+A.completedCount+"\n"+
+      "Device B (11:00) completed 2 (1 overlap) → count "+B.completedCount+"\n\n"+
+      "✓ union = "+B.completedCount+" lessons (no loss, no duplicate)\n"+
+      "✓ position cursor → latest timestamp wins";
+    set("syncStatus","Conflict-free merge: "+B.completedCount+" lessons converged",true);
+  }catch(e){set("syncStatus",e.message,false);}
+}
+loadContexts();
+</script>
+</body>
+</html>

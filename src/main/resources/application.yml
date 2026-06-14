@@ -13,3 +13,23 @@ spring:
         format_sql: true
   flyway:
     enabled: true
+
+# Part 10: production observability. Actuator exposes a health endpoint with Kubernetes-style
+# liveness and readiness probes, so an orchestrator can restart a wedged pod (liveness) and only route
+# traffic to one that is ready — DB connected, migrations applied (readiness). Only health/info are
+# exposed over HTTP; everything else stays internal.
+management:
+  endpoints:
+    web:
+      exposure:
+        include: health, info
+  endpoint:
+    health:
+      probes:
+        enabled: true
+      show-details: when-authorized
+  health:
+    livenessstate:
+      enabled: true
+    readinessstate:
+      enabled: true

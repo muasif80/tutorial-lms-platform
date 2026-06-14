@@ -1,0 +1,53 @@
+# Scholr LMS — one-command local/production-shaped deployment.
+#
+#   docker compose up -d --build
+#   curl localhost:8080/actuator/health     # {"status":"UP"} once migrations have run
+#   curl localhost:8080/contexts            # the bounded contexts that are live
+#
+# The app is stateless: it reads its config from the environment (12-factor) and owns no data of its
+# own — PostgreSQL is the single stateful service, and its data lives in a named volume so it survives
+# restarts. Flyway runs the migrations (V1..V6) on startup, so the schema is created automatically.
+# Scale the app horizontally with `docker compose up -d --scale app=3` behind a load balancer; the
+# tenant context and idempotent writes from the earlier parts make the app safe to run many-up.
+
+services:
+  db:
+    image: postgres:16
+    environment:
+      POSTGRES_DB: ${DB_NAME:-scholr}
+      POSTGRES_USER: ${DB_USER:-scholr}
+      POSTGRES_PASSWORD: ${DB_PASSWORD:-scholr}
+    volumes:
+      - scholr-db-data:/var/lib/postgresql/data
+    healthcheck:
+      # the app waits for this to pass before it starts, so it never races the database
+      test: ["CMD-SHELL", "pg_isready -U ${DB_USER:-scholr} -d ${DB_NAME:-scholr}"]
+      interval: 5s
+      timeout: 3s
+      retries: 20
+    restart: unless-stopped
+
+  app:
+    build: .
+    image: scholr-lms:latest
+    depends_on:
+      db:
+        condition: service_healthy
+    environment:
+      DB_URL: jdbc:postgresql://db:5432/${DB_NAME:-scholr}
+      DB_USER: ${DB_USER:-scholr}
+      DB_PASSWORD: ${DB_PASSWORD:-scholr}
+      JAVA_OPTS: ${JAVA_OPTS:--XX:MaxRAMPercentage=75}
+    ports:
+      - "${APP_PORT:-8080}:8080"
+    healthcheck:
+      # readiness probe — only "healthy" once the DB is connected and migrations have applied
+      test: ["CMD-SHELL", "curl -fsS http://localhost:8080/actuator/health/readiness | grep -q '\"status\":\"UP\"'"]
+      interval: 10s
+      timeout: 5s
+      retries: 12
+      start_period: 40s
+    restart: unless-stopped
+
+volumes:
+  scholr-db-data:
