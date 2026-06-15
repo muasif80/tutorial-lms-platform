@@ -1,0 +1,64 @@
+<!DOCTYPE html>
+<html lang="en" xmlns:th="http://www.thymeleaf.org">
+<head>
+  <meta charset="utf-8"/><meta name="viewport" content="width=device-width, initial-scale=1"/>
+  <title th:text="${lesson.title} + ' · Scholr'">Lesson · Scholr</title>
+  <link rel="stylesheet" th:href="@{/css/app.css}" href="/css/app.css"/>
+</head>
+<body>
+<div class="app">
+  <div th:replace="~{fragments/shell :: sidebar('instructor','courses')}"></div>
+  <main class="main">
+    <div class="top">
+      <h1 th:text="${lesson.title}">Lesson</h1>
+      <div class="who">
+        <a th:if="${course != null}" class="btn ghost" th:href="@{'/instructor/courses/' + ${course.id}}">← <span th:text="${course.title}">Course</span></a>
+      </div>
+    </div>
+
+    <div class="sec">Lesson title</div>
+    <form method="post" th:action="@{'/instructor/lessons/' + ${lesson.id} + '/title'}" class="formrow">
+      <div class="f"><label>Title</label><input name="title" th:value="${lesson.title}" required/></div>
+      <div><button class="btn" type="submit">Save title</button></div>
+    </form>
+
+    <div class="sec">Sections <span style="color:var(--muted);font-weight:400">— the block-authored content of this lesson</span></div>
+    <div class="panel">
+      <table>
+        <thead><tr><th style="width:3rem">#</th><th>Section</th><th style="width:16rem">Order &amp; actions</th></tr></thead>
+        <tbody>
+          <tr th:each="s,it : ${sections}">
+            <td th:text="${s.position}">1</td>
+            <td><a th:href="@{'/instructor/sections/' + ${s.id} + '/edit'}" th:text="${s.title}">Section</a></td>
+            <td style="white-space:nowrap">
+              <a class="btn ghost" th:href="@{'/instructor/sections/' + ${s.id} + '/edit'}">✏️ Edit blocks</a>
+              <form method="post" th:action="@{'/instructor/sections/' + ${s.id} + '/move'}" style="display:inline">
+                <input type="hidden" name="dir" value="up"/><button class="btn ghost" type="submit" th:disabled="${it.first}">↑</button>
+              </form>
+              <form method="post" th:action="@{'/instructor/sections/' + ${s.id} + '/move'}" style="display:inline">
+                <input type="hidden" name="dir" value="down"/><button class="btn ghost" type="submit" th:disabled="${it.last}">↓</button>
+              </form>
+              <form method="post" th:action="@{'/instructor/sections/' + ${s.id} + '/delete'}" style="display:inline"
+                    onsubmit="return confirm('Delete this section?');"><button class="btn ghost" type="submit">🗑</button></form>
+            </td>
+          </tr>
+          <tr th:if="${#lists.isEmpty(sections)}"><td colspan="3" style="color:var(--muted)">No sections yet — add one below and author it in the block editor.</td></tr>
+        </tbody>
+      </table>
+    </div>
+
+    <div class="sec">Add a section</div>
+    <form method="post" th:action="@{'/instructor/lessons/' + ${lesson.id} + '/sections'}" class="formrow">
+      <div class="f"><label>Section title</label><input name="title" placeholder="Introduction" required/></div>
+      <div><button class="btn" type="submit">＋ Add &amp; open editor</button></div>
+    </form>
+
+    <div class="sec">Danger zone</div>
+    <form method="post" th:action="@{'/instructor/lessons/' + ${lesson.id} + '/delete'}" class="panel"
+          onsubmit="return confirm('Delete this whole lesson and its sections?');">
+      <button class="btn ghost" type="submit" style="color:#b91c1c;border-color:#fecaca">🗑 Delete lesson</button>
+    </form>
+  </main>
+</div>
+</body>
+</html>

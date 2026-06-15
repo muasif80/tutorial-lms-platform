@@ -71,6 +71,12 @@
       <artifactId>postgresql</artifactId>
       <scope>runtime</scope>
     </dependency>
+    <!-- Part 15: server-side HTML sanitization of authored lesson content (stored-XSS defense) -->
+    <dependency>
+      <groupId>org.jsoup</groupId>
+      <artifactId>jsoup</artifactId>
+      <version>1.18.1</version>
+    </dependency>
 
     <!-- Tests run on in-memory H2 (no external Postgres needed in CI) -->
     <dependency>

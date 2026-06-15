@@ -11,8 +11,10 @@ import com.scholr.lms.billing.BillingService;
 import com.scholr.lms.billing.domain.Plan;
 import com.scholr.lms.auth.domain.Credential;
 import com.scholr.lms.auth.internal.CredentialRepository;
+import com.scholr.lms.catalog.AuthoringService;
 import com.scholr.lms.catalog.CatalogService;
 import com.scholr.lms.catalog.domain.Course;
+import com.scholr.lms.catalog.domain.Section;
 import com.scholr.lms.enrollment.EnrollmentService;
 import com.scholr.lms.enrollment.domain.Cohort;
 import com.scholr.lms.identity.IdentityService;
@@ -43,17 +45,19 @@ public class DataSeeder implements ApplicationRunner {
 
     private final IdentityService identity;
     private final CatalogService catalog;
+    private final AuthoringService authoring;
     private final EnrollmentService enrollment;
     private final AssessmentService assessment;
     private final BillingService billing;
     private final CredentialRepository credentials;
     private final PasswordEncoder encoder;
 
-    public DataSeeder(IdentityService identity, CatalogService catalog, EnrollmentService enrollment,
-                      AssessmentService assessment, BillingService billing,
+    public DataSeeder(IdentityService identity, CatalogService catalog, AuthoringService authoring,
+                      EnrollmentService enrollment, AssessmentService assessment, BillingService billing,
                       CredentialRepository credentials, PasswordEncoder encoder) {
         this.identity = identity;
         this.catalog = catalog;
+        this.authoring = authoring;
         this.enrollment = enrollment;
         this.assessment = assessment;
         this.billing = billing;
@@ -119,6 +123,11 @@ public class DataSeeder implements ApplicationRunner {
             // 5) an auto-graded assessment on the first course, so the learning flow ends in a real grade
             seedQuiz(c1.id());
 
+            // 5b) rich, block-authored sections on the first lesson of course 1, so the lesson view shows
+            //     the full content experience (headings, lists, quote, video embed, table, code) on boot.
+            UUID firstLesson = catalog.lessons(c1.id()).get(0).id();
+            seedRichSections(firstLesson);
+
             // 6) billing — plans + a couple of subscriptions, so the admin billing console has real rows.
             //    Payment is off in the demo; these are recorded directly (the entry point Part 7 uses).
             Plan monthly = billing.createPlan("All-Access (Monthly)", "all-access", Plan.Interval.MONTH, 4900);
@@ -148,6 +157,33 @@ public class DataSeeder implements ApplicationRunner {
             catalog.addLesson(course.id(), title, "In this lesson: " + title
                 + ". A concise, self-contained unit the learner works through and marks complete.");
         }
+    }
+
+    /** Author two block-editor sections on a lesson (rendered + sanitized via AuthoringService). */
+    private void seedRichSections(UUID lessonId) {
+        String overview = """
+            {"blocks":[
+              {"type":"header","data":{"text":"Why tenant isolation is non-negotiable","level":2}},
+              {"type":"paragraph","data":{"text":"In a multi-tenant SaaS, one shared database serves every customer. The whole business rests on one invariant: <b>no tenant can ever see another tenant's data</b>."}},
+              {"type":"list","data":{"style":"unordered","items":["A data leak is an existential failure, not a cosmetic one","Isolation must be enforced by construction, not by remembering to filter","Defence in depth: the app layer and the database each enforce it independently"]}},
+              {"type":"quote","data":{"text":"The cheapest cross-tenant leak still costs you every customer's trust.","caption":"Scholr post-mortem"}},
+              {"type":"embed","data":{"service":"youtube","embed":"https://www.youtube.com/embed/MfcBYr5KZh4","width":580,"height":320,"caption":"Multi-tenancy, in two minutes"}}
+            ]}""";
+        String models = """
+            {"blocks":[
+              {"type":"header","data":{"text":"The three tenancy models","level":2}},
+              {"type":"paragraph","data":{"text":"There are three classic ways to isolate tenants, trading isolation against cost and operational simplicity."}},
+              {"type":"table","data":{"withHeadings":true,"content":[["Model","Isolation","Cost"],["Silo (database per tenant)","Strongest","Highest"],["Bridge (schema per tenant)","Strong","Medium"],["Pool (shared schema + tenant_id)","Enforced in software","Lowest"]]}},
+              {"type":"paragraph","data":{"text":"Scholr uses the <b>pool</b> model: a tenant_id discriminator plus PostgreSQL Row-Level Security as a second wall."}},
+              {"type":"code","data":{"code":"CREATE POLICY tenant_isolation ON courses\\n  USING (tenant_id = current_setting('app.tenant_id')::uuid);"}}
+            ]}""";
+        seedSection(lessonId, "Overview", overview);
+        seedSection(lessonId, "The three tenancy models", models);
+    }
+
+    private void seedSection(UUID lessonId, String title, String contentJson) {
+        Section s = authoring.addSection(lessonId, title);
+        authoring.saveSection(s.id(), title, contentJson); // renders + sanitizes the block JSON to HTML
     }
 
     /** A small auto-graded quiz: one single-choice, one multiple-choice, one short-text question. */

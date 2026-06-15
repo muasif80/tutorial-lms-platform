@@ -21,24 +21,37 @@
     <div class="sec">Lessons</div>
     <div class="panel">
       <table>
-        <thead><tr><th style="width:3rem">#</th><th>Title</th><th>Content</th></tr></thead>
+        <thead><tr><th style="width:3rem">#</th><th>Title</th><th>Sections</th><th style="width:14rem">Order &amp; actions</th></tr></thead>
         <tbody>
-          <tr th:each="l : ${lessons}">
+          <tr th:each="l,it : ${lessons}">
             <td th:text="${l.position}">1</td>
-            <td th:text="${l.title}">Lesson</td>
-            <td style="color:var(--muted)" th:text="${#strings.abbreviate(l.body,80)}">…</td>
+            <td><a th:href="@{'/instructor/lessons/' + ${l.id}}" th:text="${l.title}">Lesson</a></td>
+            <td th:text="${l.sections}">0</td>
+            <td style="white-space:nowrap">
+              <a class="btn ghost" th:href="@{'/instructor/lessons/' + ${l.id}}">✏️ Edit</a>
+              <form method="post" th:action="@{'/instructor/lessons/' + ${l.id} + '/move'}" style="display:inline">
+                <input type="hidden" name="dir" value="up"/><button class="btn ghost" type="submit" th:disabled="${it.first}">↑</button>
+              </form>
+              <form method="post" th:action="@{'/instructor/lessons/' + ${l.id} + '/move'}" style="display:inline">
+                <input type="hidden" name="dir" value="down"/><button class="btn ghost" type="submit" th:disabled="${it.last}">↓</button>
+              </form>
+              <form method="post" th:action="@{'/instructor/lessons/' + ${l.id} + '/delete'}" style="display:inline"
+                    onsubmit="return confirm('Delete this lesson and its sections?');">
+                <button class="btn ghost" type="submit">🗑</button>
+              </form>
+            </td>
           </tr>
-          <tr th:if="${#lists.isEmpty(lessons)}"><td colspan="3" style="color:var(--muted)">No lessons yet — add the first below.</td></tr>
+          <tr th:if="${#lists.isEmpty(lessons)}"><td colspan="4" style="color:var(--muted)">No lessons yet — add the first below.</td></tr>
         </tbody>
       </table>
     </div>
 
     <div class="sec">Add a lesson</div>
-    <form method="post" th:action="@{'/instructor/courses/' + ${course.id} + '/lessons'}" class="panel" style="display:grid;gap:.75rem">
+    <form method="post" th:action="@{'/instructor/courses/' + ${course.id} + '/lessons'}" class="formrow">
       <div class="f"><label>Lesson title</label><input name="title" placeholder="Topics &amp; partitions" required/></div>
-      <div class="f"><label>Lesson body</label><textarea name="body" rows="4" placeholder="What this lesson teaches…"></textarea></div>
       <div><button class="btn" type="submit">＋ Add lesson</button></div>
     </form>
+    <p style="color:var(--muted);margin:-8px 0 8px">Add a lesson, then open it to author its sections in the block editor.</p>
 
     <div class="sec">Publish</div>
     <div class="panel" style="display:flex;align-items:center;justify-content:space-between;gap:1rem">

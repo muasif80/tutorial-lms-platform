@@ -4,6 +4,23 @@
   <meta charset="utf-8"/><meta name="viewport" content="width=device-width, initial-scale=1"/>
   <title th:text="${course.title} + ' · Scholr'">Course · Scholr</title>
   <link rel="stylesheet" th:href="@{/css/app.css}" href="/css/app.css"/>
+  <style>
+    .player{display:grid;grid-template-columns:260px 1fr;gap:22px;align-items:start}
+    .toc{position:sticky;top:18px}
+    .toc a{display:block;padding:9px 12px;border-radius:9px;color:var(--text);text-decoration:none;font-size:14px}
+    .toc a.active{background:var(--brand);color:#fff;font-weight:600}
+    .toc a:hover:not(.active){background:#eef2f7}
+    .toc .tick{color:#34d399;font-weight:700}
+    .lesson-body{background:#fff;border:1px solid var(--line);border-radius:14px;padding:6px 28px 26px;line-height:1.65}
+    .lesson-body img{max-width:100%;height:auto;border-radius:8px}
+    .lesson-body iframe{max-width:100%;width:680px;height:382px;border:0;border-radius:8px}
+    .lesson-body pre{background:#0f172a;color:#e2e8f0;padding:14px 16px;border-radius:10px;overflow:auto}
+    .lesson-body table{border-collapse:collapse;width:100%}
+    .lesson-body td,.lesson-body th{border:1px solid var(--line);padding:8px 10px}
+    .lesson-body blockquote{border-left:3px solid var(--brand);margin:0;padding:6px 16px;color:var(--muted)}
+    .lesson-body figure{margin:16px 0}.lesson-body figcaption{color:var(--muted);font-size:13px;margin-top:6px}
+    @media(max-width:820px){.player{grid-template-columns:1fr}}
+  </style>
 </head>
 <body>
 <div class="app">
@@ -14,18 +31,13 @@
       <div class="who"><a class="btn ghost" th:href="@{/learn/courses}">← My learning</a></div>
     </div>
 
-    <!-- certificate -->
-    <div th:if="${complete}" class="panel" style="background:linear-gradient(120deg,#06281f,#0a3a3a);border-color:#34d399;margin-bottom:18px">
+    <div th:if="${complete}" class="panel" style="background:linear-gradient(120deg,#06281f,#0a3a3a);border-color:#34d399;margin-bottom:14px">
       <div style="display:flex;align-items:center;justify-content:space-between;gap:1rem">
-        <div>
-          <div style="font-size:20px;font-weight:800;color:#bbf7d0">🎓 Course complete</div>
-          <div style="color:#86efac">You've completed every lesson in this course. Certificate of completion earned.</div>
-        </div>
+        <div><div style="font-size:18px;font-weight:800;color:#bbf7d0">🎓 Course complete — certificate earned</div></div>
         <span class="tag instructor">100%</span>
       </div>
     </div>
 
-    <!-- progress -->
     <div class="panel" style="margin-bottom:18px">
       <div style="display:flex;justify-content:space-between;margin-bottom:8px">
         <strong>Progress</strong>
@@ -34,42 +46,55 @@
       <div class="bar"><i th:style="'width:' + ${percent} + '%'"></i></div>
     </div>
 
-    <div class="sec">Lessons</div>
-    <div class="panel" th:each="l : ${lessons}" th:id="'lesson-' + ${l.id}" style="margin-bottom:12px">
-      <div style="display:flex;align-items:flex-start;justify-content:space-between;gap:1rem">
-        <div style="flex:1">
-          <div style="font-weight:700">
-            <span th:text="${l.position}">1</span>. <span th:text="${l.title}">Lesson</span>
-            <span th:if="${l.completed}" class="tag instructor" style="margin-left:6px">✓ Done</span>
-          </div>
-          <div style="color:var(--muted);margin-top:6px" th:text="${l.body}">Lesson body…</div>
+    <div class="player">
+      <!-- the lesson menu / table of contents -->
+      <aside class="panel toc">
+        <div style="font-weight:700;margin-bottom:8px">Lessons</div>
+        <a th:each="l : ${toc}" th:href="@{'/learn/courses/' + ${course.id}(lesson=${l.id})}"
+           th:classappend="${current != null and l.id == current.id} ? 'active'"
+           ><span th:text="${l.position}">1</span>. <span th:text="${l.title}">Lesson</span>
+           <span th:if="${l.completed}" class="tick">✓</span></a>
+        <div th:if="${!#lists.isEmpty(quizzes)}" style="margin-top:12px;border-top:1px solid var(--line);padding-top:10px">
+          <div style="font-weight:700;margin-bottom:6px">Assessments</div>
+          <a th:each="q : ${quizzes}" th:href="@{'/learn/courses/' + ${course.id} + '/assessments/' + ${q.id}}"
+             >📝 <span th:text="${q.title}">Quiz</span>
+             <span th:if="${q.bestScore != null}" class="tick" th:text="'(' + ${q.bestScore} + '/' + ${q.maxScore} + ')'"></span></a>
         </div>
-        <div>
-          <form th:if="${!l.completed}" method="post" th:action="@{'/learn/courses/' + ${course.id} + '/lessons/' + ${l.id} + '/complete'}">
-            <button class="btn" type="submit">Mark complete</button>
-          </form>
-          <span th:if="${l.completed}" class="tag student">Completed</span>
-        </div>
-      </div>
-    </div>
+      </aside>
 
-    <div th:if="${!#lists.isEmpty(quizzes)}">
-      <div class="sec">Assessments</div>
-      <div class="panel">
-        <table>
-          <thead><tr><th>Assessment</th><th>Best score</th><th></th></tr></thead>
-          <tbody>
-            <tr th:each="q : ${quizzes}">
-              <td th:text="${q.title}">Quiz</td>
-              <td>
-                <span th:if="${q.bestScore != null}" th:text="${q.bestScore} + ' / ' + ${q.maxScore}">–</span>
-                <span th:if="${q.bestScore == null}" style="color:var(--muted)">Not attempted</span>
-              </td>
-              <td><a class="btn ghost" th:href="@{'/learn/courses/' + ${course.id} + '/assessments/' + ${q.id}}">Take →</a></td>
-            </tr>
-          </tbody>
-        </table>
-      </div>
+      <!-- the selected lesson -->
+      <section>
+        <div th:if="${current == null}" class="panel" style="color:var(--muted)">This course has no lessons yet.</div>
+
+        <div th:if="${current != null}">
+          <h2 style="margin:0 0 4px" th:text="${current.title}">Lesson</h2>
+          <div style="margin-bottom:12px">
+            <span th:if="${currentCompleted}" class="tag instructor">✓ Completed</span>
+          </div>
+
+          <!-- the lesson content: server-rendered, sanitized HTML from each section (no JS needed) -->
+          <article class="lesson-body">
+            <div th:if="${#lists.isEmpty(sections)}" style="color:var(--muted)" th:text="${current.body}">No content yet.</div>
+            <div th:each="s : ${sections}">
+              <h3 th:text="${s.title}" style="margin-top:22px">Section</h3>
+              <div th:utext="${s.renderedHtml}">content</div>
+            </div>
+          </article>
+
+          <!-- navigation: mark complete + prev/next pagination -->
+          <div style="display:flex;align-items:center;justify-content:space-between;gap:1rem;margin-top:18px">
+            <a th:if="${prevId != null}" class="btn ghost" th:href="@{'/learn/courses/' + ${course.id}(lesson=${prevId})}">← Previous</a>
+            <span th:unless="${prevId != null}"></span>
+            <form th:if="${!currentCompleted}" method="post"
+                  th:action="@{'/learn/courses/' + ${course.id} + '/lessons/' + ${current.id} + '/complete'}">
+              <button class="btn" type="submit">✓ Mark lesson complete</button>
+            </form>
+            <span th:if="${currentCompleted}" class="tag student">Completed</span>
+            <a th:if="${nextId != null}" class="btn" th:href="@{'/learn/courses/' + ${course.id}(lesson=${nextId})}">Next →</a>
+            <span th:unless="${nextId != null}"></span>
+          </div>
+        </div>
+      </section>
     </div>
   </main>
 </div>

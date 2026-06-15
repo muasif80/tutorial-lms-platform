@@ -43,13 +43,16 @@ public class StudentController {
     private final EnrollmentService enrollment;
     private final LearningService learning;
     private final AssessmentService assessment;
+    private final com.scholr.lms.catalog.AuthoringService authoring;
 
     public StudentController(CatalogService catalog, EnrollmentService enrollment,
-                            LearningService learning, AssessmentService assessment) {
+                            LearningService learning, AssessmentService assessment,
+                            com.scholr.lms.catalog.AuthoringService authoring) {
         this.catalog = catalog;
         this.enrollment = enrollment;
         this.learning = learning;
         this.assessment = assessment;
+        this.authoring = authoring;
     }
 
     private void principal(Model model, UserPrincipal p) {
@@ -138,16 +141,34 @@ public class StudentController {
     // ---- the course player -----------------------------------------------------------------------
 
     @GetMapping("/learn/courses/{courseId}")
-    public String player(@AuthenticationPrincipal UserPrincipal p, @PathVariable UUID courseId, Model model) {
+    public String player(@AuthenticationPrincipal UserPrincipal p, @PathVariable UUID courseId,
+                         @RequestParam(required = false) UUID lesson, Model model) {
         principal(model, p);
         UUID learnerId = p.userId();
         Course course = catalog.findCourse(courseId)
             .orElseThrow(() -> new IllegalArgumentException("no course " + courseId));
 
         Set<UUID> completed = learning.completedLessonIds(learnerId, courseId);
-        List<LessonView> lessons = new ArrayList<>();
-        for (Lesson l : catalog.lessons(courseId)) {
-            lessons.add(new LessonView(l.id(), l.position(), l.title(), l.body(), completed.contains(l.id())));
+        List<Lesson> all = catalog.lessons(courseId);
+
+        // table-of-contents (the lesson menu) + locate the selected lesson
+        List<LessonView> toc = new ArrayList<>();
+        int currentIdx = -1;
+        for (int i = 0; i < all.size(); i++) {
+            Lesson l = all.get(i);
+            toc.add(new LessonView(l.id(), l.position(), l.title(), completed.contains(l.id())));
+            if ((lesson != null && l.id().equals(lesson)) || (lesson == null && currentIdx < 0)) {
+                currentIdx = i;
+            }
+        }
+
+        if (currentIdx >= 0) {
+            Lesson current = all.get(currentIdx);
+            model.addAttribute("current", current);
+            model.addAttribute("sections", authoring.sections(current.id())); // each carries sanitized renderedHtml
+            model.addAttribute("currentCompleted", completed.contains(current.id()));
+            model.addAttribute("prevId", currentIdx > 0 ? all.get(currentIdx - 1).id() : null);
+            model.addAttribute("nextId", currentIdx < all.size() - 1 ? all.get(currentIdx + 1).id() : null);
         }
 
         List<AssessmentView> quizzes = new ArrayList<>();
@@ -157,10 +178,10 @@ public class StudentController {
                 best == null ? null : best.score(), best == null ? null : best.maxScore()));
         }
 
-        long total = lessons.size();
+        long total = all.size();
         long done = completed.size();
         model.addAttribute("course", course);
-        model.addAttribute("lessons", lessons);
+        model.addAttribute("toc", toc);
         model.addAttribute("quizzes", quizzes);
         model.addAttribute("done", done);
         model.addAttribute("total", total);
@@ -169,7 +190,7 @@ public class StudentController {
         return "student/player";
     }
 
-    public record LessonView(UUID id, int position, String title, String body, boolean completed) {
+    public record LessonView(UUID id, int position, String title, boolean completed) {
     }
 
     public record AssessmentView(UUID id, String title, Integer bestScore, Integer maxScore) {
@@ -179,7 +200,7 @@ public class StudentController {
     public String complete(@AuthenticationPrincipal UserPrincipal p, @PathVariable UUID courseId,
                            @PathVariable UUID lessonId) {
         learning.markComplete(p.userId(), courseId, lessonId);
-        return "redirect:/learn/courses/" + courseId + "#lesson-" + lessonId;
+        return "redirect:/learn/courses/" + courseId + "?lesson=" + lessonId;
     }
 
     // ---- the assessment --------------------------------------------------------------------------

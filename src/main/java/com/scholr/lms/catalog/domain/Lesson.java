@@ -53,6 +53,15 @@ public class Lesson {
         return new Lesson(UUID.randomUUID(), courseId, title, position, body);
     }
 
+    /** Part 15: the instructor can rename a lesson and reorder it within the course. */
+    public void rename(String title) {
+        this.title = title;
+    }
+
+    public void moveTo(int position) {
+        this.position = position;
+    }
+
     public UUID id() {
         return id;
     }

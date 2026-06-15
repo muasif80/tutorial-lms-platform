@@ -1,0 +1,88 @@
+<!DOCTYPE html>
+<html lang="en" xmlns:th="http://www.thymeleaf.org">
+<head>
+  <meta charset="utf-8"/><meta name="viewport" content="width=device-width, initial-scale=1"/>
+  <title>Edit section · Scholr</title>
+  <link rel="stylesheet" th:href="@{/css/app.css}" href="/css/app.css"/>
+  <style>
+    .editor-shell{background:#fff;border:1px solid var(--line);border-radius:14px;padding:14px 22px;min-height:340px}
+    #editorjs{max-width:760px}
+    .ce-block__content,.ce-toolbar__content{max-width:680px}
+    .savebar{display:flex;gap:12px;align-items:flex-end;margin:14px 0}
+  </style>
+</head>
+<body>
+<div class="app">
+  <div th:replace="~{fragments/shell :: sidebar('instructor','courses')}"></div>
+  <main class="main">
+    <div class="top">
+      <h1>Block editor</h1>
+      <div class="who"><a class="btn ghost" th:href="@{'/instructor/lessons/' + ${lesson.id}}">← Back to <span th:text="${lesson.title}">lesson</span></a></div>
+    </div>
+
+    <form id="saveForm" method="post" th:action="@{'/instructor/sections/' + ${section.id}}">
+      <div class="savebar">
+        <div class="f" style="flex:1"><label>Section title</label><input name="title" th:value="${section.title}" required/></div>
+        <input type="hidden" name="contentJson" id="contentJson"/>
+        <button class="btn" type="button" onclick="saveSection()">💾 Save section</button>
+      </div>
+      <p style="color:var(--muted);margin-top:0">Click <strong>+</strong> to add a block — paragraph, heading, list, checklist, quote, table, code,
+        image (uploads), or an embed (YouTube/Vimeo video, audio, a GitHub gist, a PDF). Drag the handle to reorder. Saved content is
+        sanitized on the server before students ever see it.</p>
+    </form>
+
+    <div class="editor-shell"><div id="editorjs"></div></div>
+  </main>
+</div>
+
+<!-- Editor.js + tools (self-hosted via jsDelivr CDN) -->
+<script src="https://cdn.jsdelivr.net/npm/@editorjs/editorjs@latest"></script>
+<script src="https://cdn.jsdelivr.net/npm/@editorjs/header@latest"></script>
+<script src="https://cdn.jsdelivr.net/npm/@editorjs/list@latest"></script>
+<script src="https://cdn.jsdelivr.net/npm/@editorjs/checklist@latest"></script>
+<script src="https://cdn.jsdelivr.net/npm/@editorjs/quote@latest"></script>
+<script src="https://cdn.jsdelivr.net/npm/@editorjs/code@latest"></script>
+<script src="https://cdn.jsdelivr.net/npm/@editorjs/table@latest"></script>
+<script src="https://cdn.jsdelivr.net/npm/@editorjs/image@latest"></script>
+<script src="https://cdn.jsdelivr.net/npm/@editorjs/embed@latest"></script>
+<script src="https://cdn.jsdelivr.net/npm/@editorjs/delimiter@latest"></script>
+<script src="https://cdn.jsdelivr.net/npm/@editorjs/raw@latest"></script>
+<script src="https://cdn.jsdelivr.net/npm/@editorjs/marker@latest"></script>
+<script src="https://cdn.jsdelivr.net/npm/@editorjs/inline-code@latest"></script>
+
+<script th:inline="javascript">
+  /*<![CDATA[*/
+  const INITIAL = /*[[${section.contentJson}]]*/ '';
+  /*]]>*/
+  let data = undefined;
+  try { if (INITIAL && INITIAL.trim().length) { data = JSON.parse(INITIAL); } } catch (e) { data = undefined; }
+
+  const editor = new EditorJS({
+    holder: 'editorjs',
+    placeholder: 'Start writing the lesson, or press + to add a block…',
+    data: data,
+    tools: {
+      header:    { class: Header, inlineToolbar: true, config: { levels: [2,3,4], defaultLevel: 2 } },
+      list:      { class: (window.EditorjsList || window.NestedList || window.List), inlineToolbar: true },
+      checklist: { class: Checklist, inlineToolbar: true },
+      quote:     { class: Quote, inlineToolbar: true },
+      code:      { class: CodeTool },
+      table:     { class: Table, inlineToolbar: true },
+      image:     { class: ImageTool, config: { endpoints: { byFile: '/instructor/upload/image' }, field: 'image', types: 'image/*' } },
+      embed:     { class: Embed, config: { services: { youtube: true, vimeo: true, codepen: true, github: true } } },
+      delimiter: { class: Delimiter },
+      raw:       { class: RawTool },
+      marker:    { class: Marker },
+      inlineCode:{ class: InlineCode }
+    }
+  });
+
+  function saveSection() {
+    editor.save().then((output) => {
+      document.getElementById('contentJson').value = JSON.stringify(output);
+      document.getElementById('saveForm').submit();
+    }).catch((err) => { alert('Could not save: ' + err); });
+  }
+</script>
+</body>
+</html>
