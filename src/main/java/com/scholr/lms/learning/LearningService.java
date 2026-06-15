@@ -63,4 +63,10 @@ public class LearningService {
     public boolean isCourseComplete(UUID learnerId, UUID courseId, long totalLessons) {
         return totalLessons > 0 && completedCount(learnerId, courseId) >= totalLessons;
     }
+
+    /** Part 14: total lesson completions across the tenant — an engagement metric for the admin reports. */
+    @Transactional(readOnly = true)
+    public long totalCompletions() {
+        return completions.count();
+    }
 }

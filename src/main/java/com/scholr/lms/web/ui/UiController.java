@@ -82,18 +82,6 @@ public class UiController {
         return "redirect:/admin/people?dup";
     }
 
-    // --- sections still being built out (Part 14); clean placeholders so navigation never 404s ---
-    @GetMapping({"/admin/courses", "/admin/billing", "/admin/reports"})
-    public String soon(@AuthenticationPrincipal UserPrincipal principal, Model model) {
-        addPrincipal(model, principal);
-        model.addAttribute("role", switch (principal.role()) {
-            case ORG_ADMIN -> "admin";
-            case INSTRUCTOR -> "instructor";
-            case LEARNER -> "student";
-        });
-        return "placeholder";
-    }
-
     private void addPrincipal(Model model, UserPrincipal principal) {
         model.addAttribute("displayName", principal.displayName());
         model.addAttribute("roleLabel", switch (principal.role()) {

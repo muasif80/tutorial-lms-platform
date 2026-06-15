@@ -1,0 +1,62 @@
+<!DOCTYPE html>
+<html lang="en" xmlns:th="http://www.thymeleaf.org">
+<head>
+  <meta charset="utf-8"/><meta name="viewport" content="width=device-width, initial-scale=1"/>
+  <title>Billing · Admin · Scholr</title>
+  <link rel="stylesheet" th:href="@{/css/app.css}" href="/css/app.css"/>
+</head>
+<body>
+<div class="app">
+  <div th:replace="~{fragments/shell :: sidebar('admin','billing')}"></div>
+  <main class="main">
+    <div class="top"><h1>Billing</h1><div class="who">Plans, subscriptions &amp; entitlements</div></div>
+
+    <div class="stats">
+      <div class="stat c"><div class="n" th:text="${#lists.size(plans)}">0</div><div class="l">Plans</div></div>
+      <div class="stat s"><div class="n" th:text="${activeSubs}">0</div><div class="l">Active subscriptions</div></div>
+      <div class="stat i"><div class="n" th:text="${activeEntitlements}">0</div><div class="l">Active entitlements</div></div>
+    </div>
+
+    <div class="notice">💳 Payment processing is <b>off</b> in this demo. Subscriptions are recorded directly through the
+      billing service's entry point; the state machine, entitlements, and idempotent webhook handling are the
+      Part 7 engine, here viewed by an admin.</div>
+
+    <div class="sec">Plans</div>
+    <div class="panel">
+      <table>
+        <thead><tr><th>Plan</th><th>Entitlement</th><th>Interval</th><th>Price</th></tr></thead>
+        <tbody>
+          <tr th:each="pl : ${plans}">
+            <td th:text="${pl.name}">Plan</td>
+            <td><code th:text="${pl.entitlementKey}">key</code></td>
+            <td th:text="${pl.interval}">MONTH</td>
+            <td th:text="${pl.price}">$0</td>
+          </tr>
+          <tr th:if="${#lists.isEmpty(plans)}"><td colspan="4" style="color:var(--muted)">No plans configured.</td></tr>
+        </tbody>
+      </table>
+    </div>
+
+    <div class="sec">Subscriptions</div>
+    <div class="panel">
+      <table>
+        <thead><tr><th>Learner</th><th>Plan</th><th>Status</th></tr></thead>
+        <tbody>
+          <tr th:each="s : ${subs}">
+            <td th:text="${s.learner}">Learner</td>
+            <td th:text="${s.plan}">Plan</td>
+            <td>
+              <span th:if="${s.status == 'ACTIVE'}" class="tag instructor" th:text="${s.status}">ACTIVE</span>
+              <span th:if="${s.status == 'TRIALING'}" class="tag student" th:text="${s.status}">TRIALING</span>
+              <span th:if="${s.status == 'PAST_DUE'}" class="tag" style="background:#fef3c7;color:#92400e" th:text="${s.status}">PAST_DUE</span>
+              <span th:if="${s.status == 'CANCELED'}" class="tag" style="background:#fee2e2;color:#b91c1c" th:text="${s.status}">CANCELED</span>
+            </td>
+          </tr>
+          <tr th:if="${#lists.isEmpty(subs)}"><td colspan="3" style="color:var(--muted)">No subscriptions yet.</td></tr>
+        </tbody>
+      </table>
+    </div>
+  </main>
+</div>
+</body>
+</html>

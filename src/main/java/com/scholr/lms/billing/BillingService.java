@@ -100,6 +100,32 @@ public class BillingService {
         return true;
     }
 
+    // --- Part 14: read-only views for the admin billing console (all tenant-scoped by @TenantId) ---
+
+    /** The plans offered in this tenant. */
+    @Transactional(readOnly = true)
+    public java.util.List<Plan> allPlans() {
+        return plans.findAll();
+    }
+
+    /** Every subscription in this tenant (for the admin overview). */
+    @Transactional(readOnly = true)
+    public java.util.List<Subscription> allSubscriptions() {
+        return subscriptions.findAll();
+    }
+
+    /** Look up one plan (e.g. to render a subscription's plan name). */
+    @Transactional(readOnly = true)
+    public java.util.Optional<Plan> findPlan(UUID planId) {
+        return plans.findById(planId);
+    }
+
+    /** How many entitlements are currently active across the tenant. */
+    @Transactional(readOnly = true)
+    public long activeEntitlementCount() {
+        return entitlements.findAll().stream().filter(Entitlement::isActive).count();
+    }
+
     /** The access check, read on every protected request. Cheap by design — one indexed row. */
     @Transactional(readOnly = true)
     public boolean hasAccess(UUID learnerId, String entitlementKey) {

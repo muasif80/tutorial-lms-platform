@@ -7,6 +7,8 @@ import java.util.UUID;
 import com.scholr.lms.assessment.AssessmentService;
 import com.scholr.lms.assessment.domain.Assessment;
 import com.scholr.lms.assessment.domain.QuestionType;
+import com.scholr.lms.billing.BillingService;
+import com.scholr.lms.billing.domain.Plan;
 import com.scholr.lms.auth.domain.Credential;
 import com.scholr.lms.auth.internal.CredentialRepository;
 import com.scholr.lms.catalog.CatalogService;
@@ -43,15 +45,18 @@ public class DataSeeder implements ApplicationRunner {
     private final CatalogService catalog;
     private final EnrollmentService enrollment;
     private final AssessmentService assessment;
+    private final BillingService billing;
     private final CredentialRepository credentials;
     private final PasswordEncoder encoder;
 
     public DataSeeder(IdentityService identity, CatalogService catalog, EnrollmentService enrollment,
-                      AssessmentService assessment, CredentialRepository credentials, PasswordEncoder encoder) {
+                      AssessmentService assessment, BillingService billing,
+                      CredentialRepository credentials, PasswordEncoder encoder) {
         this.identity = identity;
         this.catalog = catalog;
         this.enrollment = enrollment;
         this.assessment = assessment;
+        this.billing = billing;
         this.credentials = credentials;
         this.encoder = encoder;
     }
@@ -113,6 +118,13 @@ public class DataSeeder implements ApplicationRunner {
 
             // 5) an auto-graded assessment on the first course, so the learning flow ends in a real grade
             seedQuiz(c1.id());
+
+            // 6) billing — plans + a couple of subscriptions, so the admin billing console has real rows.
+            //    Payment is off in the demo; these are recorded directly (the entry point Part 7 uses).
+            Plan monthly = billing.createPlan("All-Access (Monthly)", "all-access", Plan.Interval.MONTH, 4900);
+            Plan annual = billing.createPlan("All-Access (Annual)", "all-access", Plan.Interval.YEAR, 49000);
+            billing.subscribe(stu1, monthly.id(), "sub_demo_maria", false); // ACTIVE
+            billing.subscribe(stu4, annual.id(), "sub_demo_tomas", true);   // TRIALING
 
             // silence "unused" for the second instructor reference — both exist as instructors
             assert inst1 != null;

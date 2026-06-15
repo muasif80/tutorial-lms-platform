@@ -1,0 +1,48 @@
+<!DOCTYPE html>
+<html lang="en" xmlns:th="http://www.thymeleaf.org">
+<head>
+  <meta charset="utf-8"/><meta name="viewport" content="width=device-width, initial-scale=1"/>
+  <title>Reports · Admin · Scholr</title>
+  <link rel="stylesheet" th:href="@{/css/app.css}" href="/css/app.css"/>
+</head>
+<body>
+<div class="app">
+  <div th:replace="~{fragments/shell :: sidebar('admin','reports')}"></div>
+  <main class="main">
+    <div class="top"><h1>Reports</h1><div class="who">Organisation-wide rollup of every role's activity</div></div>
+
+    <div class="sec">People</div>
+    <div class="stats">
+      <div class="stat a"><div class="n" th:text="${admins}">0</div><div class="l">Admins</div></div>
+      <div class="stat i"><div class="n" th:text="${instructors}">0</div><div class="l">Instructors</div></div>
+      <div class="stat s"><div class="n" th:text="${students}">0</div><div class="l">Students</div></div>
+    </div>
+
+    <div class="sec">Catalogue</div>
+    <div class="stats">
+      <div class="stat c"><div class="n" th:text="${coursesTotal}">0</div><div class="l">Courses</div></div>
+      <div class="stat c"><div class="n" th:text="${coursesPublished}">0</div><div class="l">Published</div></div>
+      <div class="stat a"><div class="n" th:text="${coursesDraft}">0</div><div class="l">Draft</div></div>
+      <div class="stat i"><div class="n" th:text="${lessons}">0</div><div class="l">Lessons</div></div>
+      <div class="stat s"><div class="n" th:text="${assessments}">0</div><div class="l">Assessments</div></div>
+    </div>
+
+    <div class="sec">Enrolment &amp; capacity</div>
+    <div class="stats">
+      <div class="stat i"><div class="n" th:text="${cohorts}">0</div><div class="l">Cohorts</div></div>
+      <div class="stat s"><div class="n" th:text="${enrolled}">0</div><div class="l">Enrolments</div></div>
+      <div class="stat c"><div class="n" th:text="${capacity}">0</div><div class="l">Total seats</div></div>
+      <div class="stat a"><div class="n" th:text="${fillRate} + '%'">0%</div><div class="l">Seat fill rate</div></div>
+    </div>
+
+    <div class="sec">Engagement</div>
+    <div class="stats">
+      <div class="stat c"><div class="n" th:text="${completions}">0</div><div class="l">Lessons completed</div></div>
+    </div>
+    <p style="color:var(--muted);max-width:640px">Every figure here is a live sum over the tenant-scoped facts the
+      instructor and student workspaces create — no separate analytics store, no nightly batch. The same data,
+      viewed from the top.</p>
+  </main>
+</div>
+</body>
+</html>

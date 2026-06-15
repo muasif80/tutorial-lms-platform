@@ -1,0 +1,33 @@
+<!DOCTYPE html>
+<html lang="en" xmlns:th="http://www.thymeleaf.org">
+<head>
+  <meta charset="utf-8"/><meta name="viewport" content="width=device-width, initial-scale=1"/>
+  <title>Courses · Admin · Scholr</title>
+  <link rel="stylesheet" th:href="@{/css/app.css}" href="/css/app.css"/>
+</head>
+<body>
+<div class="app">
+  <div th:replace="~{fragments/shell :: sidebar('admin','courses')}"></div>
+  <main class="main">
+    <div class="top"><h1>Courses</h1><div class="who">Every course in the organisation</div></div>
+
+    <div class="panel">
+      <table>
+        <thead><tr><th>Course</th><th>Status</th><th>Lessons</th><th>Cohorts</th><th>Enrolled</th><th>Assessments</th></tr></thead>
+        <tbody>
+          <tr th:each="c : ${courses}">
+            <td th:text="${c.title}">Course</td>
+            <td><span th:class="'tag ' + (${c.published}?'instructor':'student')" th:text="${c.published}?'Published':'Draft'">Draft</span></td>
+            <td th:text="${c.lessons}">0</td>
+            <td th:text="${c.cohorts}">0</td>
+            <td th:text="${c.enrolled} + ' / ' + ${c.capacity}">0 / 0</td>
+            <td th:text="${c.assessments}">0</td>
+          </tr>
+          <tr th:if="${#lists.isEmpty(courses)}"><td colspan="6" style="color:var(--muted)">No courses yet.</td></tr>
+        </tbody>
+      </table>
+    </div>
+  </main>
+</div>
+</body>
+</html>
