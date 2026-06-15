@@ -5,6 +5,7 @@ import java.util.Set;
 import org.jsoup.Jsoup;
 import org.jsoup.nodes.Document;
 import org.jsoup.nodes.Element;
+import org.jsoup.safety.Cleaner;
 import org.jsoup.safety.Safelist;
 import org.springframework.stereotype.Component;
 
@@ -69,10 +70,11 @@ public class HtmlSanitizer {
         if (html == null || html.isBlank()) {
             return "";
         }
-        String cleaned = Jsoup.clean(html, safelist);
-        Document doc = Jsoup.parseBodyFragment(cleaned);
-        // Compact output (no pretty-print): keeps the markup tight and, crucially, preserves whitespace
-        // inside <pre> code blocks instead of reflowing it.
+        // Clean the parsed document directly (not via Jsoup.clean's string round-trip, which pretty-prints
+        // and would inject newlines as text nodes). Compact output keeps the markup tight and preserves
+        // whitespace inside <pre> code blocks.
+        Document dirty = Jsoup.parseBodyFragment(html);
+        Document doc = new Cleaner(safelist).clean(dirty);
         doc.outputSettings().prettyPrint(false);
         for (Element iframe : doc.select("iframe")) {
             if (!hostAllowed(iframe.attr("src"))) {
