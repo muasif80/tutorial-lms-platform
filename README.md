@@ -26,6 +26,7 @@ demands it. (Stack rationale and the full design are in Part 1.)
 | 12 — The Instructor Workspace: Course Authoring, Lessons & Cohort Rosters | https://skillsuites.com/lms-instructor-course-authoring/ |
 | 13 — The Student Learning Flow: Catalog, Enrolment, Player & Auto-Graded Assessments | https://skillsuites.com/lms-student-learning-flow/ |
 | 14 — The Admin Console: Catalog Oversight, Org Reports & Billing | https://skillsuites.com/lms-admin-console/ |
+| 15 — Rich Lesson Authoring: A Block Editor for Sections, Media & Embeds | https://skillsuites.com/lms-rich-lesson-authoring/ |
 
 ## Branches
 
@@ -47,6 +48,7 @@ demands it. (Stack rationale and the full design are in Part 1.)
 | `part-12` | The instructor workspace: course & lesson authoring, a guarded draft→publish lifecycle, and tenant-scoped cohort rosters (an explicit by-id join across the Enrollment and Identity contexts) |
 | `part-13` | The student learning flow: published-course catalogue, idempotent enrol-by-course, a lesson player with progress tracking, auto-graded assessments, and completion certificates — progress modeled as a fold over idempotent completion facts |
 | `part-14` | The admin console: catalogue oversight, organisation-wide reports computed live as folds over tenant-scoped facts (no analytics warehouse), and a billing view over the Part 7 subscription engine — completing the working-platform arc |
+| `part-15` | Rich lesson authoring: a genuine block editor (Editor.js) — lessons as ordered sections with images, video/audio/PDF embeds, tables, code; server-side HTML sanitization (jsoup allow-list) as the stored-XSS trust boundary; a no-JS student lesson view with a lesson menu + prev/next pagination |
 
 ## What's in `part-2`
 
@@ -329,6 +331,31 @@ on read from the same operational tables the other roles write, so it's always c
 When live aggregation eventually gets slow, the migration path is the event-driven read models from Part 5.
 
 Run it: sign in as `admin@acme.test` / `scholr` → **Reports**, **Courses**, **Billing**.
+
+## What's in `part-15` (series extension — rich lesson authoring)
+
+Part 15 makes lesson authoring real: a **genuine block editor** in the instructor workspace, and a clean,
+safe, no-JavaScript reading experience for students.
+
+- **Content model** — a `Lesson` is now an ordered list of `Section`s (`catalog/domain/Section.java`,
+  tenant-scoped, `V10__sections.sql`). Each section stores both the editor's **block JSON** (editable source)
+  and server-rendered **sanitized HTML** (what learners see).
+- **Block editor** — self-hosted **Editor.js** with a widget inserter: paragraph, heading, list, checklist,
+  quote, table, code, image (uploads), and embeds (YouTube/Vimeo video, audio, GitHub gist, PDF). Authored
+  per section at `/instructor/sections/{id}/edit`.
+- **The trust boundary** — `shared/HtmlSanitizer.java` (jsoup **allow-list** + an iframe **host allow-list**)
+  is the single place authored content is sanitized; `catalog/BlockRenderer.java` renders block JSON → HTML
+  then sanitizes. Scripts, event handlers, `javascript:` URLs, and off-allow-list iframes are stripped.
+  Proven by `HtmlSanitizerTest` + `BlockRendererTest`.
+- **Authoring CRUD + navigation** — `AuthoringService` (section/lesson create, rename, delete, reorder by
+  position swap) + a lesson/section table-of-contents in the instructor UI.
+- **Images** — uploaded to a small tenant-scoped demo store (`media_blobs`, base64 text, served from
+  `/media/blob/{id}`); video/audio/PDF/Word/GitHub are **referenced by URL/embed, never hosted** (Part 3's rule).
+- **Student view** — `student/player.html` renders each lesson's sanitized sections with a **lesson menu**
+  (TOC), **previous/next pagination**, and the existing mark-complete/progress — all with **no JavaScript**.
+
+Run it: as `instructor@acme.test`, open a course → a lesson → a section, and press **+** to add blocks; as
+`student@acme.test`, read the lesson through the menu. The first seeded lesson ships with rich sections.
 
 ## Deploy &amp; run the whole system
 
