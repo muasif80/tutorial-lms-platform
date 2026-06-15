@@ -32,6 +32,14 @@ public class HtmlSanitizer {
         "codepen.io", "codesandbox.io"
     );
 
+    /**
+     * A dummy base URI used only so jsoup can resolve app-relative URLs (e.g. an uploaded image's
+     * {@code /media/blob/{id}}) to an allowed absolute scheme during the protocol check. Combined with
+     * {@code preserveRelativeLinks(true)}, the output keeps the original relative URL, while an absolute
+     * {@code javascript:} URL still fails the protocol allow-list and is stripped.
+     */
+    private static final String BASE_URI = "https://app.local/";
+
     private final Safelist safelist = buildSafelist();
 
     private static Safelist buildSafelist() {
@@ -73,7 +81,7 @@ public class HtmlSanitizer {
         // Clean the parsed document directly (not via Jsoup.clean's string round-trip, which pretty-prints
         // and would inject newlines as text nodes). Compact output keeps the markup tight and preserves
         // whitespace inside <pre> code blocks.
-        Document dirty = Jsoup.parseBodyFragment(html);
+        Document dirty = Jsoup.parseBodyFragment(html, BASE_URI);
         Document doc = new Cleaner(safelist).clean(dirty);
         doc.outputSettings().prettyPrint(false);
         for (Element iframe : doc.select("iframe")) {

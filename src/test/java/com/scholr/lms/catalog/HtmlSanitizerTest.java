@@ -43,6 +43,16 @@ class HtmlSanitizerTest {
     }
 
     @Test
+    void keeps_app_relative_image_urls() {
+        // Regression: an uploaded image is referenced by an app-relative URL (/media/blob/{id}).
+        // This must survive sanitization — earlier tests only used absolute URLs and missed this.
+        assertThat(sanitizer.sanitize("<figure><img src=\"/media/blob/abc-123\" alt=\"x\"></figure>"))
+            .contains("src=\"/media/blob/abc-123\"");
+        // ...while an absolute javascript: URL is still stripped (it carries a disallowed scheme).
+        assertThat(sanitizer.sanitize("<img src=\"javascript:alert(1)\">")).doesNotContain("javascript:");
+    }
+
+    @Test
     void keeps_safe_media_embeds() {
         assertThat(sanitizer.sanitize("<video src=\"https://cdn.x/clip.mp4\" controls></video>")).contains("<video");
         assertThat(sanitizer.sanitize("<audio src=\"https://cdn.x/a.mp3\" controls></audio>")).contains("<audio");
