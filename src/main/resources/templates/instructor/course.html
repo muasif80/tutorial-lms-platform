@@ -1,0 +1,55 @@
+<!DOCTYPE html>
+<html lang="en" xmlns:th="http://www.thymeleaf.org">
+<head>
+  <meta charset="utf-8"/><meta name="viewport" content="width=device-width, initial-scale=1"/>
+  <title th:text="${course.title} + ' · Scholr'">Course · Scholr</title>
+  <link rel="stylesheet" th:href="@{/css/app.css}" href="/css/app.css"/>
+</head>
+<body>
+<div class="app">
+  <div th:replace="~{fragments/shell :: sidebar('instructor','courses')}"></div>
+  <main class="main">
+    <div class="top">
+      <h1 th:text="${course.title}">Course</h1>
+      <div class="who">
+        <a th:href="@{/instructor/courses}" class="btn ghost">← All courses</a>
+        <span th:class="'tag ' + (${course.published}?'instructor':'student')"
+              th:text="${course.published}?'Published':'Draft'">Draft</span>
+      </div>
+    </div>
+
+    <div class="sec">Lessons</div>
+    <div class="panel">
+      <table>
+        <thead><tr><th style="width:3rem">#</th><th>Title</th><th>Content</th></tr></thead>
+        <tbody>
+          <tr th:each="l : ${lessons}">
+            <td th:text="${l.position}">1</td>
+            <td th:text="${l.title}">Lesson</td>
+            <td style="color:var(--muted)" th:text="${#strings.abbreviate(l.body,80)}">…</td>
+          </tr>
+          <tr th:if="${#lists.isEmpty(lessons)}"><td colspan="3" style="color:var(--muted)">No lessons yet — add the first below.</td></tr>
+        </tbody>
+      </table>
+    </div>
+
+    <div class="sec">Add a lesson</div>
+    <form method="post" th:action="@{'/instructor/courses/' + ${course.id} + '/lessons'}" class="panel" style="display:grid;gap:.75rem">
+      <div class="f"><label>Lesson title</label><input name="title" placeholder="Topics &amp; partitions" required/></div>
+      <div class="f"><label>Lesson body</label><textarea name="body" rows="4" placeholder="What this lesson teaches…"></textarea></div>
+      <div><button class="btn" type="submit">＋ Add lesson</button></div>
+    </form>
+
+    <div class="sec">Publish</div>
+    <div class="panel" style="display:flex;align-items:center;justify-content:space-between;gap:1rem">
+      <div style="color:var(--muted)" th:if="${!course.published}">Publishing makes this course visible to students in the catalog.</div>
+      <div style="color:var(--muted)" th:if="${course.published}">This course is live in the student catalog.</div>
+      <form method="post" th:action="@{'/instructor/courses/' + ${course.id} + '/publish'}" th:if="${!course.published}">
+        <button class="btn" type="submit">Publish course →</button>
+      </form>
+      <span th:if="${course.published}" class="tag instructor">✓ Published</span>
+    </div>
+  </main>
+</div>
+</body>
+</html>

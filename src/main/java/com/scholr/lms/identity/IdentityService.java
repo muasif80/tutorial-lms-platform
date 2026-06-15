@@ -39,4 +39,9 @@ public class IdentityService {
     public Membership addMembership(UUID userId, Role role) {
         return memberships.save(Membership.create(userId, role));
     }
+
+    /** Look up a user by id (e.g. to render a roster of learner names). Users are global. */
+    public java.util.Optional<AppUser> findUser(UUID userId) {
+        return users.findById(userId);
+    }
 }

@@ -1,0 +1,34 @@
+<!DOCTYPE html>
+<html lang="en" xmlns:th="http://www.thymeleaf.org">
+<head>
+  <meta charset="utf-8"/><meta name="viewport" content="width=device-width, initial-scale=1"/>
+  <title>Cohorts &amp; Roster · Scholr</title>
+  <link rel="stylesheet" th:href="@{/css/app.css}" href="/css/app.css"/>
+</head>
+<body>
+<div class="app">
+  <div th:replace="~{fragments/shell :: sidebar('instructor','cohorts')}"></div>
+  <main class="main">
+    <div class="top"><h1>Cohorts &amp; roster</h1><div class="who">Who is enrolled in each class</div></div>
+
+    <div th:if="${#lists.isEmpty(cohorts)}" class="panel" style="color:var(--muted)">
+      No cohorts yet. Cohorts are created per course; once students enroll they appear here.
+    </div>
+
+    <div th:each="c : ${cohorts}" class="panel" style="margin-bottom:1rem">
+      <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:.5rem">
+        <strong th:text="${c.courseTitle}">Course</strong>
+        <span class="tag student" th:text="${c.enrolled} + ' / ' + ${c.capacity} + ' seats'">0 / 0 seats</span>
+      </div>
+      <table>
+        <thead><tr><th style="width:3rem">#</th><th>Student</th></tr></thead>
+        <tbody>
+          <tr th:each="s,it : ${c.students}"><td th:text="${it.count}">1</td><td th:text="${s}">Student</td></tr>
+          <tr th:if="${#lists.isEmpty(c.students)}"><td colspan="2" style="color:var(--muted)">No students enrolled yet.</td></tr>
+        </tbody>
+      </table>
+    </div>
+  </main>
+</div>
+</body>
+</html>

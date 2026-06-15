@@ -1,0 +1,38 @@
+<!DOCTYPE html>
+<html lang="en" xmlns:th="http://www.thymeleaf.org">
+<head>
+  <meta charset="utf-8"/><meta name="viewport" content="width=device-width, initial-scale=1"/>
+  <title>My Courses · Scholr</title>
+  <link rel="stylesheet" th:href="@{/css/app.css}" href="/css/app.css"/>
+</head>
+<body>
+<div class="app">
+  <div th:replace="~{fragments/shell :: sidebar('instructor','courses')}"></div>
+  <main class="main">
+    <div class="top"><h1>My courses</h1><div class="who">Author and publish course content</div></div>
+
+    <div class="sec">Create a course</div>
+    <form method="post" th:action="@{/instructor/courses}" action="/instructor/courses" class="formrow">
+      <div class="f"><label>Course title</label><input name="title" placeholder="Introduction to Kafka" required/></div>
+      <div><button class="btn" type="submit">＋ Create course</button></div>
+    </form>
+
+    <div class="sec">Courses</div>
+    <div class="panel">
+      <table>
+        <thead><tr><th>Title</th><th>Lessons</th><th>Status</th><th></th></tr></thead>
+        <tbody>
+          <tr th:each="c : ${courses}">
+            <td th:text="${c.title}">Course</td>
+            <td th:text="${c.lessons}">0</td>
+            <td><span th:class="'tag ' + (${c.published}?'instructor':'student')" th:text="${c.published}?'Published':'Draft'">Draft</span></td>
+            <td><a class="btn ghost" th:href="@{'/instructor/courses/' + ${c.id}}">Edit →</a></td>
+          </tr>
+          <tr th:if="${#lists.isEmpty(courses)}"><td colspan="4" style="color:var(--muted)">No courses yet — create one above.</td></tr>
+        </tbody>
+      </table>
+    </div>
+  </main>
+</div>
+</body>
+</html>

@@ -23,7 +23,8 @@ demands it. (Stack rationale and the full design are in Part 1.)
 | 9 — The Experience Layer: Frontend, Accessibility (WCAG 2.2), i18n & Offline | https://skillsuites.com/lms-frontend-accessibility-i18n/ |
 | 10 — Productionizing: Security, Testing, CI/CD, Scaling, SRE & Cost (Capstone) | https://skillsuites.com/lms-production-security-testing-sre/ |
 | 11 — The Working Platform: Login, RBAC & a Server-Rendered UI | https://skillsuites.com/lms-login-rbac-thymeleaf-ui/ |
-| 12–14 — the working end-to-end flows | building |
+| 12 — The Instructor Workspace: Course Authoring, Lessons & Cohort Rosters | https://skillsuites.com/lms-instructor-course-authoring/ |
+| 13–14 — the student flow & admin console | building |
 
 ## Branches
 
@@ -42,6 +43,7 @@ demands it. (Stack rationale and the full design are in Part 1.)
 | `part-9` | Sync: offline-first conflict resolution — grow-only-set union for completed lessons + last-write-wins position cursor, idempotent multi-device merge |
 | `part-10` | Production: Actuator probes, a committed docker-compose deploy, a hardened non-root container — the system, deployable |
 | `part-11` | The working platform: Spring Security login + enforced RBAC, tenant-from-identity, Thymeleaf role dashboards, admin enroll flow, seeded demo tenant |
+| `part-12` | The instructor workspace: course & lesson authoring, a guarded draft→publish lifecycle, and tenant-scoped cohort rosters (an explicit by-id join across the Enrollment and Identity contexts) |
 
 ## What's in `part-2`
 
@@ -252,6 +254,29 @@ Part 11 turns the backend into a **usable, multi-role platform** with a server-r
 
 Run it: `docker compose up -d --build`, then open `http://localhost:8080/login` and sign in as
 `admin@acme.test` / `instructor@acme.test` / `student@acme.test` (password `scholr`).
+
+## What's in `part-12` (series extension — the instructor workspace)
+
+Part 12 makes the **instructor role** real: authoring content end to end, all tenant-scoped, all built on
+Part 11's login + RBAC + tenant-from-identity.
+
+- **Course & lesson authoring** — a new `catalog/domain/Lesson.java` (tenant-scoped via `@TenantId`,
+  referencing its course by id), with `CatalogService` gaining `createCourse`, `addLesson`, `lessons`, and
+  `lessonCount`. Lesson `position` is computed on the server (`count + 1`), never sent by the client.
+- **A guarded draft→publish lifecycle** — `CatalogService.publish` loads the course, calls the aggregate's
+  `Course.publish()` transition, and saves it in one transaction. Publishing is idempotent and lives in one
+  place, so future rules (e.g. "needs a lesson to go live") have a single home — not a boolean setter.
+- **Cohort rosters across two contexts** — `web/ui/InstructorController` joins tenant-scoped **Enrollment**
+  (`cohortsForCourse`, `rosterForCohort`) to **global Identity** (`IdentityService.findUser`) *by id*. The
+  controller owns the join; the entities never hold a cross-context JPA association — that by-id rule is what
+  keeps the module boundary hard and tenant isolation auditable (and it's enforced by the ArchUnit test).
+- **Server-rendered Thymeleaf views** — `templates/instructor/{courses,course,cohorts}.html`, every mutation
+  a plain HTML form using Post/Redirect/Get so a browser refresh can't duplicate content. Works without JS.
+- **`V8__lessons.sql`** — the lessons table with `tenant_id` + index + PostgreSQL Row-Level Security, mirroring
+  every other migration in the series.
+
+Run it: sign in as `instructor@acme.test` / `scholr`, then **My Courses** → create a course, add lessons,
+publish; **Cohorts & Roster** shows the enrolled students by name.
 
 ## Deploy &amp; run the whole system
 

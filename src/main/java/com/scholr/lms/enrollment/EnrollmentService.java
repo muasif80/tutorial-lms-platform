@@ -1,5 +1,6 @@
 package com.scholr.lms.enrollment;
 
+import java.util.List;
 import java.util.UUID;
 
 import com.scholr.lms.enrollment.domain.Cohort;
@@ -52,5 +53,28 @@ public class EnrollmentService {
                 outbox.append("enrollment.created", saved.id(), learnerId + ":" + cohort.courseId());
                 return saved;
             });
+    }
+
+    /** Part 12: the cohorts (classes) of a course — tenant-scoped. */
+    @Transactional(readOnly = true)
+    public List<Cohort> cohortsForCourse(UUID courseId) {
+        return cohorts.findByCourseId(courseId);
+    }
+
+    /** Part 12: the enrollments (roster) of a cohort. */
+    @Transactional(readOnly = true)
+    public List<Enrollment> rosterForCohort(UUID cohortId) {
+        return enrollments.findByCohortId(cohortId);
+    }
+
+    /** Part 13: a learner's enrollments — backs the student's "my courses". */
+    @Transactional(readOnly = true)
+    public List<Enrollment> enrollmentsForLearner(UUID learnerId) {
+        return enrollments.findByLearnerId(learnerId);
+    }
+
+    @Transactional(readOnly = true)
+    public Cohort cohort(UUID cohortId) {
+        return cohorts.findById(cohortId).orElseThrow(() -> new IllegalArgumentException("cohort not found: " + cohortId));
     }
 }

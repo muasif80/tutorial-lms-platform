@@ -89,9 +89,8 @@ public class UiController {
         return "redirect:/admin/people?dup";
     }
 
-    // --- sections built out in Parts 12–14; clean placeholders so navigation never 404s ---
+    // --- sections still being built out (Parts 13–14); clean placeholders so navigation never 404s ---
     @GetMapping({"/admin/courses", "/admin/billing", "/admin/reports",
-                 "/instructor/courses", "/instructor/cohorts", "/instructor/grading",
                  "/learn/catalog", "/learn/courses", "/learn/progress"})
     public String soon(@AuthenticationPrincipal UserPrincipal principal, Model model) {
         addPrincipal(model, principal);
