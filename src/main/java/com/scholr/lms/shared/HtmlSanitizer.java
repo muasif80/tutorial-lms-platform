@@ -71,6 +71,9 @@ public class HtmlSanitizer {
         }
         String cleaned = Jsoup.clean(html, safelist);
         Document doc = Jsoup.parseBodyFragment(cleaned);
+        // Compact output (no pretty-print): keeps the markup tight and, crucially, preserves whitespace
+        // inside <pre> code blocks instead of reflowing it.
+        doc.outputSettings().prettyPrint(false);
         for (Element iframe : doc.select("iframe")) {
             if (!hostAllowed(iframe.attr("src"))) {
                 iframe.remove();
