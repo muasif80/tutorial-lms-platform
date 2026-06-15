@@ -25,7 +25,7 @@ demands it. (Stack rationale and the full design are in Part 1.)
 | 11 — The Working Platform: Login, RBAC & a Server-Rendered UI | https://skillsuites.com/lms-login-rbac-thymeleaf-ui/ |
 | 12 — The Instructor Workspace: Course Authoring, Lessons & Cohort Rosters | https://skillsuites.com/lms-instructor-course-authoring/ |
 | 13 — The Student Learning Flow: Catalog, Enrolment, Player & Auto-Graded Assessments | https://skillsuites.com/lms-student-learning-flow/ |
-| 14 — the admin console | building |
+| 14 — The Admin Console: Catalog Oversight, Org Reports & Billing | https://skillsuites.com/lms-admin-console/ |
 
 ## Branches
 
@@ -46,6 +46,7 @@ demands it. (Stack rationale and the full design are in Part 1.)
 | `part-11` | The working platform: Spring Security login + enforced RBAC, tenant-from-identity, Thymeleaf role dashboards, admin enroll flow, seeded demo tenant |
 | `part-12` | The instructor workspace: course & lesson authoring, a guarded draft→publish lifecycle, and tenant-scoped cohort rosters (an explicit by-id join across the Enrollment and Identity contexts) |
 | `part-13` | The student learning flow: published-course catalogue, idempotent enrol-by-course, a lesson player with progress tracking, auto-graded assessments, and completion certificates — progress modeled as a fold over idempotent completion facts |
+| `part-14` | The admin console: catalogue oversight, organisation-wide reports computed live as folds over tenant-scoped facts (no analytics warehouse), and a billing view over the Part 7 subscription engine — completing the working-platform arc |
 
 ## What's in `part-2`
 
@@ -304,6 +305,30 @@ composed almost entirely from machinery built in earlier parts.
 
 Run it: sign in as `student@acme.test` / `scholr` → **Catalog** to enrol, **My Learning** to open a course,
 mark lessons complete, take the quiz, and watch **Progress & Certificates** fill in.
+
+## What's in `part-14` (series extension — the admin console, arc complete)
+
+Part 14 gives the **admin role** the organisation-wide console that rolls up everything the instructor and
+student workspaces produce — completing the working-platform arc (Parts 11–14).
+
+- **`web/ui/AdminController`** — three role-gated screens:
+  - `/admin/courses` — every course (published *and* draft) with lessons, cohorts, enrolled/capacity, and
+    assessment counts, assembled from four contexts via their public APIs.
+  - `/admin/reports` — an organisation rollup computed **live** (no analytics store): role counts, catalogue
+    health, cohort capacity and seat fill rate, and total lesson completions.
+  - `/admin/billing` — plans, subscriptions (joined to learner and plan names **by id**), and active
+    entitlements — a read-only window onto the Part 7 subscription engine (payments off in the demo).
+- **`BillingService`** gains tenant-scoped read views (`allPlans`, `allSubscriptions`, `findPlan`,
+  `activeEntitlementCount`); **`LearningService.totalCompletions`** backs the engagement metric.
+- **`DataSeeder`** seeds two plans and two subscriptions so the billing console has real rows.
+- The admin sees everything **within** its tenant and nothing outside it: `@TenantId` + RLS apply to admin
+  queries too, so the broad role never crosses the isolation boundary.
+
+The design point: **the admin console is a rollup, not a second source of truth.** Every figure is summed
+on read from the same operational tables the other roles write, so it's always current and never drifts.
+When live aggregation eventually gets slow, the migration path is the event-driven read models from Part 5.
+
+Run it: sign in as `admin@acme.test` / `scholr` → **Reports**, **Courses**, **Billing**.
 
 ## Deploy &amp; run the whole system
 
