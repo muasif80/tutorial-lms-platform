@@ -1,0 +1,40 @@
+<!DOCTYPE html>
+<html lang="en" xmlns:th="http://www.thymeleaf.org">
+<head>
+  <meta charset="utf-8"/><meta name="viewport" content="width=device-width, initial-scale=1"/>
+  <title>Course Catalog · Scholr</title>
+  <link rel="stylesheet" th:href="@{/css/app.css}" href="/css/app.css"/>
+</head>
+<body>
+<div class="app">
+  <div th:replace="~{fragments/shell :: sidebar('student','catalog')}"></div>
+  <main class="main">
+    <div class="top"><h1>Course catalog</h1><div class="who">Published courses you can enrol in</div></div>
+
+    <div th:if="${#lists.isEmpty(courses)}" class="panel" style="color:var(--muted)">
+      No published courses yet. Once an instructor publishes a course it shows up here.
+    </div>
+
+    <div class="grid">
+      <div class="card" th:each="c,it : ${courses}">
+        <div th:class="'thumb t' + (${it.index} % 4 + 1)"></div>
+        <div class="cbody">
+          <h3 th:text="${c.title}">Course</h3>
+          <div class="meta"><span th:text="${c.lessons}">0</span> lessons</div>
+          <div style="margin-top:12px" th:if="${!c.enrolled}">
+            <form method="post" th:action="@{/learn/enroll}">
+              <input type="hidden" name="courseId" th:value="${c.id}"/>
+              <button class="btn" type="submit">Enrol →</button>
+            </form>
+          </div>
+          <div style="margin-top:12px" th:if="${c.enrolled}">
+            <a class="btn ghost" th:href="@{'/learn/courses/' + ${c.id}}">Continue →</a>
+            <span class="tag instructor" style="margin-left:6px">Enrolled</span>
+          </div>
+        </div>
+      </div>
+    </div>
+  </main>
+</div>
+</body>
+</html>

@@ -1,0 +1,39 @@
+<!DOCTYPE html>
+<html lang="en" xmlns:th="http://www.thymeleaf.org">
+<head>
+  <meta charset="utf-8"/><meta name="viewport" content="width=device-width, initial-scale=1"/>
+  <title>Result · Scholr</title>
+  <link rel="stylesheet" th:href="@{/css/app.css}" href="/css/app.css"/>
+</head>
+<body>
+<div class="app">
+  <div th:replace="~{fragments/shell :: sidebar('student','courses')}"></div>
+  <main class="main">
+    <div class="top"><h1>Assessment result</h1><div class="who">Auto-graded instantly</div></div>
+
+    <div class="panel" style="text-align:center;padding:36px"
+         th:styleappend="${pass} ? 'border-color:#34d399' : 'border-color:#f59e0b'">
+      <div style="font-size:56px;font-weight:800"
+           th:styleappend="${pass} ? 'color:#34d399' : 'color:#f59e0b'"
+           th:text="${percent} + '%'">0%</div>
+      <div style="font-size:18px;margin-top:6px">
+        You scored <strong th:text="${score}">0</strong> out of <strong th:text="${maxScore}">0</strong>
+      </div>
+      <div style="margin-top:10px">
+        <span th:if="${pass}" class="tag instructor">✓ Passed</span>
+        <span th:if="${!pass}" class="tag" style="background:#fef3c7;color:#92400e">Keep practising</span>
+      </div>
+      <div style="margin-top:22px">
+        <a class="btn" th:href="@{'/learn/courses/' + ${courseId}}">← Back to course</a>
+      </div>
+    </div>
+
+    <p style="color:var(--muted);max-width:640px">
+      Grading is deterministic and server-side: single-choice is all-or-nothing, multiple-choice gives
+      proportional partial credit, and short-text is matched after normalisation. Submitting again is
+      idempotent — a double-click returns the same recorded grade rather than regrading.
+    </p>
+  </main>
+</div>
+</body>
+</html>

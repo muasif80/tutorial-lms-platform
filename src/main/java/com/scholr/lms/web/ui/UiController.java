@@ -62,13 +62,6 @@ public class UiController {
         return "instructor/dashboard";
     }
 
-    @GetMapping("/learn")
-    public String studentDashboard(@AuthenticationPrincipal UserPrincipal principal, Model model) {
-        addPrincipal(model, principal);
-        model.addAttribute("courses", catalog.allCourses());
-        return "student/dashboard";
-    }
-
     /** Admin · People & Roles — list everyone in the tenant and add new instructors/students. */
     @GetMapping("/admin/people")
     public String people(@AuthenticationPrincipal UserPrincipal principal, Model model) {
@@ -89,9 +82,8 @@ public class UiController {
         return "redirect:/admin/people?dup";
     }
 
-    // --- sections still being built out (Parts 13–14); clean placeholders so navigation never 404s ---
-    @GetMapping({"/admin/courses", "/admin/billing", "/admin/reports",
-                 "/learn/catalog", "/learn/courses", "/learn/progress"})
+    // --- sections still being built out (Part 14); clean placeholders so navigation never 404s ---
+    @GetMapping({"/admin/courses", "/admin/billing", "/admin/reports"})
     public String soon(@AuthenticationPrincipal UserPrincipal principal, Model model) {
         addPrincipal(model, principal);
         model.addAttribute("role", switch (principal.role()) {

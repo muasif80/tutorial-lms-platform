@@ -1,0 +1,77 @@
+<!DOCTYPE html>
+<html lang="en" xmlns:th="http://www.thymeleaf.org">
+<head>
+  <meta charset="utf-8"/><meta name="viewport" content="width=device-width, initial-scale=1"/>
+  <title th:text="${course.title} + ' · Scholr'">Course · Scholr</title>
+  <link rel="stylesheet" th:href="@{/css/app.css}" href="/css/app.css"/>
+</head>
+<body>
+<div class="app">
+  <div th:replace="~{fragments/shell :: sidebar('student','courses')}"></div>
+  <main class="main">
+    <div class="top">
+      <h1 th:text="${course.title}">Course</h1>
+      <div class="who"><a class="btn ghost" th:href="@{/learn/courses}">← My learning</a></div>
+    </div>
+
+    <!-- certificate -->
+    <div th:if="${complete}" class="panel" style="background:linear-gradient(120deg,#06281f,#0a3a3a);border-color:#34d399;margin-bottom:18px">
+      <div style="display:flex;align-items:center;justify-content:space-between;gap:1rem">
+        <div>
+          <div style="font-size:20px;font-weight:800;color:#bbf7d0">🎓 Course complete</div>
+          <div style="color:#86efac">You've completed every lesson in this course. Certificate of completion earned.</div>
+        </div>
+        <span class="tag instructor">100%</span>
+      </div>
+    </div>
+
+    <!-- progress -->
+    <div class="panel" style="margin-bottom:18px">
+      <div style="display:flex;justify-content:space-between;margin-bottom:8px">
+        <strong>Progress</strong>
+        <span style="color:var(--muted)"><span th:text="${done}">0</span>/<span th:text="${total}">0</span> lessons · <span th:text="${percent} + '%'">0%</span></span>
+      </div>
+      <div class="bar"><i th:style="'width:' + ${percent} + '%'"></i></div>
+    </div>
+
+    <div class="sec">Lessons</div>
+    <div class="panel" th:each="l : ${lessons}" th:id="'lesson-' + ${l.id}" style="margin-bottom:12px">
+      <div style="display:flex;align-items:flex-start;justify-content:space-between;gap:1rem">
+        <div style="flex:1">
+          <div style="font-weight:700">
+            <span th:text="${l.position}">1</span>. <span th:text="${l.title}">Lesson</span>
+            <span th:if="${l.completed}" class="tag instructor" style="margin-left:6px">✓ Done</span>
+          </div>
+          <div style="color:var(--muted);margin-top:6px" th:text="${l.body}">Lesson body…</div>
+        </div>
+        <div>
+          <form th:if="${!l.completed}" method="post" th:action="@{'/learn/courses/' + ${course.id} + '/lessons/' + ${l.id} + '/complete'}">
+            <button class="btn" type="submit">Mark complete</button>
+          </form>
+          <span th:if="${l.completed}" class="tag student">Completed</span>
+        </div>
+      </div>
+    </div>
+
+    <div th:if="${!#lists.isEmpty(quizzes)}">
+      <div class="sec">Assessments</div>
+      <div class="panel">
+        <table>
+          <thead><tr><th>Assessment</th><th>Best score</th><th></th></tr></thead>
+          <tbody>
+            <tr th:each="q : ${quizzes}">
+              <td th:text="${q.title}">Quiz</td>
+              <td>
+                <span th:if="${q.bestScore != null}" th:text="${q.bestScore} + ' / ' + ${q.maxScore}">–</span>
+                <span th:if="${q.bestScore == null}" style="color:var(--muted)">Not attempted</span>
+              </td>
+              <td><a class="btn ghost" th:href="@{'/learn/courses/' + ${course.id} + '/assessments/' + ${q.id}}">Take →</a></td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
+    </div>
+  </main>
+</div>
+</body>
+</html>

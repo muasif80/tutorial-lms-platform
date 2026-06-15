@@ -1,0 +1,41 @@
+<!DOCTYPE html>
+<html lang="en" xmlns:th="http://www.thymeleaf.org">
+<head>
+  <meta charset="utf-8"/><meta name="viewport" content="width=device-width, initial-scale=1"/>
+  <title>Progress &amp; Certificates · Scholr</title>
+  <link rel="stylesheet" th:href="@{/css/app.css}" href="/css/app.css"/>
+</head>
+<body>
+<div class="app">
+  <div th:replace="~{fragments/shell :: sidebar('student','progress')}"></div>
+  <main class="main">
+    <div class="top"><h1>Progress &amp; certificates</h1><div class="who">How far you've got in each course</div></div>
+
+    <div th:if="${#lists.isEmpty(courses)}" class="panel" style="color:var(--muted)">
+      No progress yet — enrol in a course from the <a th:href="@{/learn/catalog}">catalog</a>.
+    </div>
+
+    <div class="panel">
+      <table>
+        <thead><tr><th>Course</th><th style="width:40%">Progress</th><th>Status</th></tr></thead>
+        <tbody>
+          <tr th:each="c : ${courses}">
+            <td><a th:href="@{'/learn/courses/' + ${c.id}}" th:text="${c.title}">Course</a></td>
+            <td>
+              <div class="bar" style="margin:0"><i th:style="'width:' + ${c.percent} + '%'"></i></div>
+              <div style="color:var(--muted);font-size:12px;margin-top:4px">
+                <span th:text="${c.done}">0</span>/<span th:text="${c.total}">0</span> lessons · <span th:text="${c.percent} + '%'">0%</span>
+              </div>
+            </td>
+            <td>
+              <span th:if="${c.complete}" class="tag instructor">🎓 Certificate earned</span>
+              <span th:if="${!c.complete}" class="tag student">In progress</span>
+            </td>
+          </tr>
+        </tbody>
+      </table>
+    </div>
+  </main>
+</div>
+</body>
+</html>

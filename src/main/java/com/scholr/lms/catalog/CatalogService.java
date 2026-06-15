@@ -34,6 +34,12 @@ public class CatalogService {
         return courses.findAll();
     }
 
+    /** Part 13: the published courses for the student-facing catalogue (drafts excluded). */
+    @Transactional(readOnly = true)
+    public List<Course> publishedCourses() {
+        return courses.findByPublishedTrueOrderByTitleAsc();
+    }
+
     @Transactional(readOnly = true)
     public Optional<Course> findCourse(UUID courseId) {
         return courses.findById(courseId);

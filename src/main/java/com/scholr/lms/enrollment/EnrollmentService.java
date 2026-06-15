@@ -55,6 +55,23 @@ public class EnrollmentService {
             });
     }
 
+    /**
+     * Part 13: enrol a learner in a <em>course</em> from the student-facing catalogue. The student picks a
+     * course, not a cohort, so we resolve a cohort here: the first cohort with a seat free, or a fresh
+     * default cohort if the course has none yet. Delegates to the idempotent {@link #enroll} so a repeated
+     * "Enrol" click never double-enrols or oversells.
+     */
+    @Transactional
+    public Enrollment enrollInCourse(UUID courseId, UUID learnerId) {
+        Cohort target = cohorts.findByCourseId(courseId).stream()
+            .filter(c -> c.seatsRemaining() > 0)
+            .findFirst()
+            .orElseGet(() -> cohorts.save(Cohort.create(courseId, DEFAULT_COHORT_CAPACITY)));
+        return enroll(target.id(), learnerId);
+    }
+
+    private static final int DEFAULT_COHORT_CAPACITY = 100;
+
     /** Part 12: the cohorts (classes) of a course — tenant-scoped. */
     @Transactional(readOnly = true)
     public List<Cohort> cohortsForCourse(UUID courseId) {

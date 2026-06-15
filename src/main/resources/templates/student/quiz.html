@@ -1,0 +1,54 @@
+<!DOCTYPE html>
+<html lang="en" xmlns:th="http://www.thymeleaf.org">
+<head>
+  <meta charset="utf-8"/><meta name="viewport" content="width=device-width, initial-scale=1"/>
+  <title>Assessment · Scholr</title>
+  <link rel="stylesheet" th:href="@{/css/app.css}" href="/css/app.css"/>
+</head>
+<body>
+<div class="app">
+  <div th:replace="~{fragments/shell :: sidebar('student','courses')}"></div>
+  <main class="main">
+    <div class="top">
+      <h1>Assessment</h1>
+      <div class="who"><a class="btn ghost" th:href="@{'/learn/courses/' + ${courseId}}">← Back to course</a></div>
+    </div>
+
+    <form method="post" th:action="@{'/learn/courses/' + ${courseId} + '/assessments/' + ${assessmentId} + '/submit'}">
+      <input type="hidden" name="attemptId" th:value="${attemptId}"/>
+
+      <div class="panel" th:each="q,it : ${questions}" style="margin-bottom:14px">
+        <div style="font-weight:700">
+          <span th:text="${it.count}">1</span>. <span th:text="${q.prompt}">Question?</span>
+          <span class="tag student" style="margin-left:6px" th:text="${q.points} + (${q.points} == 1 ? ' pt' : ' pts')">1 pt</span>
+        </div>
+
+        <!-- single choice -->
+        <div th:if="${q.type == 'SINGLE_CHOICE'}" style="margin-top:10px">
+          <label th:each="opt,o : ${q.options}" style="display:block;margin:6px 0;cursor:pointer">
+            <input type="radio" th:name="'q_' + ${q.id}" th:value="${o.index}"/>
+            <span th:text="${opt}">Option</span>
+          </label>
+        </div>
+
+        <!-- multiple choice -->
+        <div th:if="${q.type == 'MULTIPLE_CHOICE'}" style="margin-top:10px">
+          <label th:each="opt,o : ${q.options}" style="display:block;margin:6px 0;cursor:pointer">
+            <input type="checkbox" th:name="'q_' + ${q.id}" th:value="${o.index}"/>
+            <span th:text="${opt}">Option</span>
+          </label>
+          <div style="color:var(--muted);font-size:12px;margin-top:4px">Select all that apply.</div>
+        </div>
+
+        <!-- short text -->
+        <div th:if="${q.type == 'SHORT_TEXT'}" class="f" style="margin-top:10px">
+          <input type="text" th:name="'q_' + ${q.id}" placeholder="Your answer"/>
+        </div>
+      </div>
+
+      <button class="btn" type="submit">Submit assessment →</button>
+    </form>
+  </main>
+</div>
+</body>
+</html>

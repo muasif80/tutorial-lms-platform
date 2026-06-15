@@ -78,6 +78,22 @@ public class AssessmentService {
         return assessments.findByCourseId(courseId);
     }
 
+    /** Part 13: the question bank to render to a learner. The answer key is on each question but the UI
+     * never renders it — grading happens server-side in {@link #submitAttempt}. */
+    @Transactional(readOnly = true)
+    public List<Question> questions(UUID assessmentId) {
+        return questions.findByAssessmentId(assessmentId);
+    }
+
+    /** Part 13: a learner's best graded result for an assessment, if they've completed any attempt. */
+    @Transactional(readOnly = true)
+    public java.util.Optional<GradedResult> bestResult(UUID assessmentId, UUID learnerId) {
+        return attempts.findByAssessmentIdAndLearnerId(assessmentId, learnerId).stream()
+            .filter(Attempt::isGraded)
+            .map(a -> new GradedResult(a.score(), a.maxScore()))
+            .max(java.util.Comparator.comparingInt(GradedResult::score));
+    }
+
     /**
      * Start a learner's next attempt — policy-checked and idempotent on the attempt number.
      *

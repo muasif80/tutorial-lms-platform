@@ -1,0 +1,36 @@
+<!DOCTYPE html>
+<html lang="en" xmlns:th="http://www.thymeleaf.org">
+<head>
+  <meta charset="utf-8"/><meta name="viewport" content="width=device-width, initial-scale=1"/>
+  <title>My Learning · Scholr</title>
+  <link rel="stylesheet" th:href="@{/css/app.css}" href="/css/app.css"/>
+</head>
+<body>
+<div class="app">
+  <div th:replace="~{fragments/shell :: sidebar('student','courses')}"></div>
+  <main class="main">
+    <div class="top"><h1>My learning</h1><div class="who">Courses you're enrolled in</div></div>
+
+    <div th:if="${#lists.isEmpty(courses)}" class="panel" style="color:var(--muted)">
+      You're not enrolled in any course yet. Visit the <a th:href="@{/learn/catalog}">catalog</a> to get started.
+    </div>
+
+    <div class="grid">
+      <div class="card" th:each="c,it : ${courses}">
+        <div th:class="'thumb t' + (${it.index} % 4 + 1)"></div>
+        <div class="cbody">
+          <h3 th:text="${c.title}">Course</h3>
+          <div class="meta">
+            <span th:text="${c.done}">0</span>/<span th:text="${c.total}">0</span> lessons ·
+            <span th:text="${c.percent} + '%'">0%</span>
+            <span th:if="${c.complete}" class="tag instructor" style="margin-left:6px">✓ Complete</span>
+          </div>
+          <div class="bar"><i th:style="'width:' + ${c.percent} + '%'"></i></div>
+          <div style="margin-top:12px"><a class="btn" th:href="@{'/learn/courses/' + ${c.id}}">Open course →</a></div>
+        </div>
+      </div>
+    </div>
+  </main>
+</div>
+</body>
+</html>

@@ -15,17 +15,35 @@
       <div class="who">Student · Acme University</div>
     </div>
 
-    <div class="notice">▶ Continue learning: <b>Multi-Tenant SaaS Architecture</b> — Lesson 7 of 12 · 14 min left &nbsp;
-      <a th:href="@{/learn/courses}">Resume →</a></div>
+    <div class="stats">
+      <div class="stat c"><div class="n" th:text="${enrolledCount}">0</div><div class="l">Enrolled courses</div></div>
+      <div class="stat s"><div class="n" th:text="${completedCount}">0</div><div class="l">Completed</div></div>
+      <div class="stat i"><div class="n" th:text="${resume != null} ? ${resume.percent} + '%' : '—'">—</div><div class="l">Current course</div></div>
+    </div>
 
-    <div class="sec">Available courses</div>
+    <div class="notice" th:if="${resume != null}">▶ Continue learning: <b th:text="${resume.title}">Course</b>
+      — <span th:text="${resume.done}">0</span> of <span th:text="${resume.total}">0</span> lessons done &nbsp;
+      <a th:href="@{'/learn/courses/' + ${resume.id}}">Resume →</a></div>
+    <div class="notice" th:if="${resume == null and enrolledCount > 0}">🎉 You've completed every course you're enrolled in. Browse the
+      <a th:href="@{/learn/catalog}">catalog</a> for more.</div>
+    <div class="notice" th:if="${enrolledCount == 0}">You're not enrolled yet — head to the
+      <a th:href="@{/learn/catalog}">catalog</a> to enrol in your first course.</div>
+
+    <div class="sec">My courses</div>
+    <div th:if="${#lists.isEmpty(courses)}" class="panel" style="color:var(--muted)">
+      Nothing here yet. Enrol from the <a th:href="@{/learn/catalog}">catalog</a>.
+    </div>
     <div class="grid">
       <div class="card" th:each="c,it : ${courses}">
         <div th:class="'thumb t' + (${it.index} % 4 + 1)"></div>
         <div class="cbody">
           <h3 th:text="${c.title}">Course</h3>
-          <div class="meta">Acme University · self-paced</div>
-          <div style="margin-top:12px"><a class="btn ghost" th:href="@{/learn/catalog}">View course →</a></div>
+          <div class="meta">
+            <span th:text="${c.percent} + '%'">0%</span> complete
+            <span th:if="${c.complete}" class="tag instructor" style="margin-left:6px">✓</span>
+          </div>
+          <div class="bar"><i th:style="'width:' + ${c.percent} + '%'"></i></div>
+          <div style="margin-top:12px"><a class="btn ghost" th:href="@{'/learn/courses/' + ${c.id}}">Open →</a></div>
         </div>
       </div>
     </div>

@@ -1,8 +1,12 @@
 package com.scholr.lms.config;
 
 import java.util.List;
+import java.util.Set;
 import java.util.UUID;
 
+import com.scholr.lms.assessment.AssessmentService;
+import com.scholr.lms.assessment.domain.Assessment;
+import com.scholr.lms.assessment.domain.QuestionType;
 import com.scholr.lms.auth.domain.Credential;
 import com.scholr.lms.auth.internal.CredentialRepository;
 import com.scholr.lms.catalog.CatalogService;
@@ -38,14 +42,16 @@ public class DataSeeder implements ApplicationRunner {
     private final IdentityService identity;
     private final CatalogService catalog;
     private final EnrollmentService enrollment;
+    private final AssessmentService assessment;
     private final CredentialRepository credentials;
     private final PasswordEncoder encoder;
 
     public DataSeeder(IdentityService identity, CatalogService catalog, EnrollmentService enrollment,
-                      CredentialRepository credentials, PasswordEncoder encoder) {
+                      AssessmentService assessment, CredentialRepository credentials, PasswordEncoder encoder) {
         this.identity = identity;
         this.catalog = catalog;
         this.enrollment = enrollment;
+        this.assessment = assessment;
         this.credentials = credentials;
         this.encoder = encoder;
     }
@@ -71,20 +77,42 @@ public class DataSeeder implements ApplicationRunner {
             UUID stu3 = account("student3@acme.test", "Priya Nair", Role.LEARNER, org.id());
             UUID stu4 = account("student4@acme.test", "Tomás Vega", Role.LEARNER, org.id());
 
-            // 3) catalog
+            // 3) catalog — courses authored as ordered lessons and published so learners can find them
             Course c1 = catalog.createCourse("Multi-Tenant SaaS Architecture");
-            Course c2 = catalog.createCourse("Streaming & the Outbox Pattern");
-            Course c3 = catalog.createCourse("Production Resilience & SRE");
-            catalog.createCourse("Accessible Web Apps (WCAG 2.2)");
+            lessons(c1, "Pool, silo & bridge tenancy models",
+                        "The tenant_id discriminator and Hibernate @TenantId",
+                        "PostgreSQL Row-Level Security as a second wall",
+                        "Resolving the tenant from identity, not a trusted header");
+            catalog.publish(c1.id());
 
-            // 4) cohorts + enrollments (the instructor's classes)
+            Course c2 = catalog.createCourse("Streaming & the Outbox Pattern");
+            lessons(c2, "Why dual writes drift", "The transactional outbox",
+                        "An at-least-once relay", "Idempotent consumers and exactly-once effects");
+            catalog.publish(c2.id());
+
+            Course c3 = catalog.createCourse("Production Resilience & SRE");
+            lessons(c3, "Liveness vs readiness probes", "Containing cascading failure",
+                        "SLOs, error budgets and alerting");
+            catalog.publish(c3.id());
+
+            Course c4 = catalog.createCourse("Accessible Web Apps (WCAG 2.2)");
+            lessons(c4, "The four POUR principles", "Keyboard and focus management",
+                        "Colour, contrast and motion");
+            catalog.publish(c4.id());
+
+            // 4) cohorts (a class per course) + the instructor's existing enrollments
             Cohort h1 = enrollment.createCohort(c1.id(), 50);
             Cohort h2 = enrollment.createCohort(c2.id(), 50);
+            enrollment.createCohort(c3.id(), 50);
+            enrollment.createCohort(c4.id(), 50);
             for (UUID learner : List.of(stu1, stu2, stu3)) {
                 enrollment.enroll(h1.id(), learner);
             }
             enrollment.enroll(h2.id(), stu1);
             enrollment.enroll(h2.id(), stu4);
+
+            // 5) an auto-graded assessment on the first course, so the learning flow ends in a real grade
+            seedQuiz(c1.id());
 
             // silence "unused" for the second instructor reference — both exist as instructors
             assert inst1 != null;
@@ -100,5 +128,30 @@ public class DataSeeder implements ApplicationRunner {
         credentials.save(Credential.of(
             email, encoder.encode(DEMO_PASSWORD), role, tenantId, user.id(), name));
         return user.id();
+    }
+
+    /** Author a course's lessons in order, with a short stand-in body for each. */
+    private void lessons(Course course, String... titles) {
+        for (String title : titles) {
+            catalog.addLesson(course.id(), title, "In this lesson: " + title
+                + ". A concise, self-contained unit the learner works through and marks complete.");
+        }
+    }
+
+    /** A small auto-graded quiz: one single-choice, one multiple-choice, one short-text question. */
+    private void seedQuiz(UUID courseId) {
+        Assessment quiz = assessment.createAssessment(courseId, "Multi-Tenancy Knowledge Check", 3, 0);
+        assessment.addQuestion(quiz.id(), QuestionType.SINGLE_CHOICE,
+            "Which column enforces tenant isolation on every tenant-scoped table?", 1,
+            List.of("tenant_id", "user_id", "org_name", "schema_name"), Set.of("0"));
+        assessment.addQuestion(quiz.id(), QuestionType.MULTIPLE_CHOICE,
+            "Which of these are real isolation layers in this architecture? (select all that apply)", 2,
+            List.of("Hibernate @TenantId filter", "PostgreSQL Row-Level Security",
+                    "A trusted X-Tenant-Id header", "Filtering only in the browser"),
+            Set.of("0", "1"));
+        assessment.addQuestion(quiz.id(), QuestionType.SHORT_TEXT,
+            "Which JPA annotation provides the optimistic lock guarding the seat invariant? "
+                + "(one word, include the @)", 1,
+            List.of(), Set.of("@version"));
     }
 }
