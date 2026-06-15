@@ -24,7 +24,8 @@ demands it. (Stack rationale and the full design are in Part 1.)
 | 10 — Productionizing: Security, Testing, CI/CD, Scaling, SRE & Cost (Capstone) | https://skillsuites.com/lms-production-security-testing-sre/ |
 | 11 — The Working Platform: Login, RBAC & a Server-Rendered UI | https://skillsuites.com/lms-login-rbac-thymeleaf-ui/ |
 | 12 — The Instructor Workspace: Course Authoring, Lessons & Cohort Rosters | https://skillsuites.com/lms-instructor-course-authoring/ |
-| 13–14 — the student flow & admin console | building |
+| 13 — The Student Learning Flow: Catalog, Enrolment, Player & Auto-Graded Assessments | https://skillsuites.com/lms-student-learning-flow/ |
+| 14 — the admin console | building |
 
 ## Branches
 
@@ -44,6 +45,7 @@ demands it. (Stack rationale and the full design are in Part 1.)
 | `part-10` | Production: Actuator probes, a committed docker-compose deploy, a hardened non-root container — the system, deployable |
 | `part-11` | The working platform: Spring Security login + enforced RBAC, tenant-from-identity, Thymeleaf role dashboards, admin enroll flow, seeded demo tenant |
 | `part-12` | The instructor workspace: course & lesson authoring, a guarded draft→publish lifecycle, and tenant-scoped cohort rosters (an explicit by-id join across the Enrollment and Identity contexts) |
+| `part-13` | The student learning flow: published-course catalogue, idempotent enrol-by-course, a lesson player with progress tracking, auto-graded assessments, and completion certificates — progress modeled as a fold over idempotent completion facts |
 
 ## What's in `part-2`
 
@@ -277,6 +279,31 @@ Part 11's login + RBAC + tenant-from-identity.
 
 Run it: sign in as `instructor@acme.test` / `scholr`, then **My Courses** → create a course, add lessons,
 publish; **Cohorts & Roster** shows the enrolled students by name.
+
+## What's in `part-13` (series extension — the student learning flow)
+
+Part 13 makes the **student role** real: discover, enrol, learn, get graded, and earn a certificate —
+composed almost entirely from machinery built in earlier parts.
+
+- **A published-course catalogue** — `CatalogService.publishedCourses()` (a `findByPublishedTrue…` query)
+  shows only courses an instructor has published; drafts stay hidden by construction.
+- **Enrol by course, idempotently** — `EnrollmentService.enrollInCourse` resolves a cohort (first with a
+  free seat, or a new default one) and delegates to Part 2's idempotent, seat-capped `enroll`, so a
+  double-clicked "Enrol" never double-enrols.
+- **A new `learning` context** — `learning/domain/LessonCompletion.java` (tenant-scoped, unique on
+  `(tenant, learner, lesson)`) + `LearningService`. **Progress is a fold over idempotent completion facts**
+  (`completed / total`, computed on read), not a maintained counter — so it can't drift under double-clicks,
+  retries, or offline re-sync. The completion certificate is the same derived state at 100%. `V9__learning.sql`
+  adds the table with RLS.
+- **The course player & auto-graded assessment** — `web/ui/StudentController` drives catalogue → enrol →
+  player (mark lessons complete) → quiz → result → progress. Starting a quiz resumes an in-progress attempt;
+  submitting is exactly-once (Part 4's `AutoGrader` + `Attempt.submit`); the answer key never reaches the
+  browser. Post/Redirect/Get throughout; works without JavaScript.
+- **A richer demo seed** — `DataSeeder` now publishes four courses with lessons and seeds an auto-graded
+  quiz, all through the model's own public operations, so the whole flow works on first boot.
+
+Run it: sign in as `student@acme.test` / `scholr` → **Catalog** to enrol, **My Learning** to open a course,
+mark lessons complete, take the quiz, and watch **Progress & Certificates** fill in.
 
 ## Deploy &amp; run the whole system
 
